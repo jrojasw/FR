@@ -21,6 +21,7 @@ enum ReportStatus {
   SUBMITTED
   APPROVED
   REJECTED
+  PAID
 }
 
 enum DocumentType {
@@ -45,6 +46,7 @@ model User {
 
   reports         ExpenseReport[] @relation("ReportOwner")
   reviewedReports ExpenseReport[] @relation("ReportReviewer")
+  paidReports     ExpenseReport[] @relation("ReportPaidBy")
   otpCodes        OtpCode[]
 }
 
@@ -96,6 +98,13 @@ model ExpenseReport {
 
   reviewer   User?   @relation("ReportReviewer", fields: [reviewerId], references: [id])
   reviewerId String?
+
+  // Certificado de pago del banco, sube el administrador cuando ya se pagó
+  paymentCertificatePath String?
+  paymentCertificateName String?
+  paidAt                 DateTime?
+  paidBy                 User?     @relation("ReportPaidBy", fields: [paidById], references: [id])
+  paidById               String?
 
   items       ExpenseItem[]
   attachments Attachment[]

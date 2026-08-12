@@ -1,15 +1,8 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatCurrency, formatDate, reportStatusLabels } from "@/lib/format";
+import { formatCurrency, formatDate, reportStatusLabels, reportStatusStyles } from "@/lib/format";
 import { createDraftReportAction } from "./actions";
-
-const statusStyles: Record<string, string> = {
-  DRAFT: "bg-slate-100 text-slate-700",
-  SUBMITTED: "bg-amber-100 text-amber-800",
-  APPROVED: "bg-emerald-100 text-emerald-800",
-  REJECTED: "bg-red-100 text-red-800",
-};
 
 export default async function RendicionesPage() {
   const session = await requireUser();
@@ -53,7 +46,7 @@ export default async function RendicionesPage() {
                 <td className="px-4 py-3 text-slate-600">{report.glosa || "—"}</td>
                 <td className="px-4 py-3 text-slate-600">{formatCurrency(report.fondoPorRendir.toString())}</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[report.status]}`}>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${reportStatusStyles[report.status]}`}>
                     {reportStatusLabels[report.status]}
                   </span>
                 </td>

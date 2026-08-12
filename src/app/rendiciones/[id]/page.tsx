@@ -20,6 +20,7 @@ export default async function RendicionDetailPage({
       items: true,
       attachments: true,
       reviewer: { select: { name: true, email: true } },
+      paidBy: { select: { name: true, email: true } },
     },
   });
 

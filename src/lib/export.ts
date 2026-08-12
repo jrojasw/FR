@@ -20,6 +20,8 @@ type ExportRow = {
   montoReembolso: number;
   estado: string;
   adjuntos: number;
+  fechaPago: string;
+  certificadoPago: string;
 };
 
 const COLUMNS: { key: keyof ExportRow; header: string }[] = [
@@ -39,6 +41,8 @@ const COLUMNS: { key: keyof ExportRow; header: string }[] = [
   { key: "montoReembolso", header: "Monto reembolso" },
   { key: "estado", header: "Estado" },
   { key: "adjuntos", header: "N° adjuntos" },
+  { key: "fechaPago", header: "Fecha de pago" },
+  { key: "certificadoPago", header: "Certificado de pago" },
 ];
 
 export function buildExportRows(reports: RegistryReport[]): ExportRow[] {
@@ -58,6 +62,8 @@ export function buildExportRows(reports: RegistryReport[]): ExportRow[] {
       montoReembolso: Number(report.montoReembolso.toString()),
       estado: reportStatusLabels[report.status] ?? report.status,
       adjuntos: report.attachments.length,
+      fechaPago: report.paidAt ? report.paidAt.toISOString().slice(0, 10) : "",
+      certificadoPago: report.paymentCertificateName ?? "",
     };
 
     if (report.items.length === 0) {

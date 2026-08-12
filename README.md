@@ -42,6 +42,7 @@ con un registro exportable a Excel/CSV de todas las rendiciones.
    | `EMAIL_FROM` | Remitente de los correos |
    | `ADMIN_EMAIL` | Correo con rol Administrador (por defecto `jorge.rojas@copayapunos.cl`) |
    | `APPROVER_EMAIL` | Correo con rol Aprobador (por defecto `williams.arce@copayapunos.cl`) |
+   | `PAYMENT_NOTICE_EMAILS` | Correos (separados por coma) que reciben el certificado de pago cuando el administrador lo envía |
    | `APP_URL` | URL pública de la app para los enlaces en los correos (opcional, se infiere del request si se deja vacío) |
    | `ATTACHMENTS_DIR` | Carpeta donde se guardan las fotos/documentos adjuntos (por defecto `./storage/attachments`) |
 
@@ -76,10 +77,13 @@ con un registro exportable a Excel/CSV de todas las rendiciones.
 - **Aprobador**: ve la lista de rendiciones pendientes y puede aprobar o
   rechazar con un comentario. El solicitante recibe un correo con la
   decisión.
-- **Administrador**: además de aprobar, tiene acceso a `/admin/registro`,
-  un registro de todas las rendiciones agrupado por usuario, año, mes y
-  día, exportable a Excel (`.xlsx`) o CSV, y con opción de enviarlo por
-  correo.
+- **Administrador**: además de aprobar, en cada rendición **Aprobada** sube
+  el certificado de pago del banco (PDF o imagen) y presiona "Enviar
+  certificado y marcar como pagada" — esto envía el certificado por correo
+  a `PAYMENT_NOTICE_EMAILS` y cambia el estado a **Pagada**, cerrando el
+  ciclo. También tiene acceso a `/admin/registro`, un registro de todas las
+  rendiciones agrupado por usuario, año, mes y día, exportable a Excel
+  (`.xlsx`) o CSV, y con opción de enviarlo por correo.
 
 ## Notas de despliegue
 

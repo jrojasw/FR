@@ -24,8 +24,8 @@ export default async function HomePage() {
       <h1 className="text-2xl font-semibold text-slate-900">Hola, {session.name}</h1>
       <p className="mt-1 text-sm text-slate-500">Panel de fondos a rendir</p>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {(["DRAFT", "SUBMITTED", "APPROVED", "REJECTED"] as const).map((status) => (
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-5">
+        {(["DRAFT", "SUBMITTED", "APPROVED", "REJECTED", "PAID"] as const).map((status) => (
           <div key={status} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs uppercase tracking-wide text-slate-500">{reportStatusLabels[status]}</p>
             <p className="mt-1 text-2xl font-semibold text-slate-900">{myCounts[status] ?? 0}</p>

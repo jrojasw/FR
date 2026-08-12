@@ -2,7 +2,7 @@ import "server-only";
 import { Resend } from "resend";
 
 type SendEmailInput = {
-  to: string;
+  to: string | string[];
   subject: string;
   html: string;
   attachments?: { filename: string; content: Buffer }[];
@@ -26,9 +26,11 @@ function getClient(): Resend | null {
 export async function sendEmail(input: SendEmailInput): Promise<{ delivered: boolean }> {
   const resend = getClient();
 
+  const to = Array.isArray(input.to) ? input.to.join(", ") : input.to;
+
   if (!resend) {
     console.log(
-      `[email:no-configurado] Para: ${input.to} | Asunto: ${input.subject}\n${input.html.replace(/<[^>]+>/g, " ")}`
+      `[email:no-configurado] Para: ${to} | Asunto: ${input.subject}\n${input.html.replace(/<[^>]+>/g, " ")}`
     );
     return { delivered: false };
   }

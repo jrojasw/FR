@@ -1,16 +1,16 @@
 import type { ReactNode } from "react";
-import { formatCurrency, formatDate, documentTypeLabels, reportStatusLabels } from "@/lib/format";
-
-const statusStyles: Record<string, string> = {
-  DRAFT: "bg-slate-100 text-slate-700",
-  SUBMITTED: "bg-amber-100 text-amber-800",
-  APPROVED: "bg-emerald-100 text-emerald-800",
-  REJECTED: "bg-red-100 text-red-800",
-};
+import {
+  formatCurrency,
+  formatDate,
+  documentTypeLabels,
+  reportStatusLabels,
+  reportStatusStyles,
+} from "@/lib/format";
 
 type Decimalish = { toString(): string };
 
 export type ReportViewData = {
+  id: string;
   correlativo: number;
   nombre: string;
   cargo: string;
@@ -28,6 +28,9 @@ export type ReportViewData = {
   reviewedAt: Date | null;
   reviewComment: string | null;
   reviewer?: { name: string | null; email: string } | null;
+  paidAt: Date | null;
+  paymentCertificateName: string | null;
+  paidBy?: { name: string | null; email: string } | null;
   items: {
     id: string;
     proveedor: string;
@@ -48,7 +51,7 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
             <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
               N° {report.correlativo}
             </span>
-            <span className={`rounded-full px-3 py-1 text-sm font-medium ${statusStyles[report.status]}`}>
+            <span className={`rounded-full px-3 py-1 text-sm font-medium ${reportStatusStyles[report.status]}`}>
               {reportStatusLabels[report.status]}
             </span>
           </div>
@@ -169,7 +172,7 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
         </div>
       </section>
 
-      {(report.status === "APPROVED" || report.status === "REJECTED") && (
+      {(report.status === "APPROVED" || report.status === "REJECTED" || report.status === "PAID") && (
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Revisión</h2>
           <dl className="mt-3 space-y-2 text-sm">
@@ -189,6 +192,41 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
               <div>
                 <dt className="text-slate-500">Comentario</dt>
                 <dd className="font-medium text-slate-900">{report.reviewComment}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </section>
+      )}
+
+      {report.status === "PAID" && (
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Pago</h2>
+          <dl className="mt-3 space-y-2 text-sm">
+            <div>
+              <dt className="text-slate-500">Pagado por</dt>
+              <dd className="font-medium text-slate-900">
+                {report.paidBy?.name ?? report.paidBy?.email ?? "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Fecha</dt>
+              <dd className="font-medium text-slate-900">
+                {report.paidAt ? formatDate(report.paidAt) : "—"}
+              </dd>
+            </div>
+            {report.paymentCertificateName ? (
+              <div>
+                <dt className="text-slate-500">Certificado de pago</dt>
+                <dd className="font-medium text-slate-900">
+                  <a
+                    href={`/api/rendiciones/${report.id}/certificado-pago`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-slate-900 underline"
+                  >
+                    {report.paymentCertificateName}
+                  </a>
+                </dd>
               </div>
             ) : null}
           </dl>

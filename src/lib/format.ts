@@ -36,6 +36,15 @@ export const reportStatusLabels: Record<string, string> = {
   SUBMITTED: "Enviada",
   APPROVED: "Aprobada",
   REJECTED: "Rechazada",
+  PAID: "Pagada",
+};
+
+export const reportStatusStyles: Record<string, string> = {
+  DRAFT: "bg-slate-100 text-slate-700",
+  SUBMITTED: "bg-amber-100 text-amber-800",
+  APPROVED: "bg-emerald-100 text-emerald-800",
+  REJECTED: "bg-red-100 text-red-800",
+  PAID: "bg-indigo-100 text-indigo-800",
 };
 
 export const roleLabels: Record<string, string> = {

@@ -3,13 +3,14 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ReportView } from "@/components/ReportView";
 import { ReviewForm } from "@/components/ReviewForm";
+import { PaymentCertificateForm } from "@/components/PaymentCertificateForm";
 
 export default async function AprobacionDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole("APROBADOR", "ADMIN");
+  const session = await requireRole("APROBADOR", "ADMIN");
   const { id } = await params;
 
   const report = await prisma.expenseReport.findFirst({
@@ -18,11 +19,15 @@ export default async function AprobacionDetailPage({
       items: true,
       attachments: true,
       reviewer: { select: { name: true, email: true } },
+      paidBy: { select: { name: true, email: true } },
       user: { select: { name: true, email: true } },
     },
   });
 
   if (!report) notFound();
+
+  const canManagePayment =
+    session.role === "ADMIN" && (report.status === "APPROVED" || report.status === "PAID");
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8">
@@ -33,7 +38,18 @@ export default async function AprobacionDetailPage({
       <div className="mt-6">
         <ReportView
           report={report}
-          actions={report.status === "SUBMITTED" ? <ReviewForm reportId={report.id} /> : undefined}
+          actions={
+            <>
+              {report.status === "SUBMITTED" && <ReviewForm reportId={report.id} />}
+              {canManagePayment && (
+                <PaymentCertificateForm
+                  reportId={report.id}
+                  initialFileName={report.paymentCertificateName}
+                  alreadyPaid={report.status === "PAID"}
+                />
+              )}
+            </>
+          }
         />
       </div>
     </div>

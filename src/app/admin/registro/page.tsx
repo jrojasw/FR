@@ -63,7 +63,7 @@ export default async function AdminRegistroPage({
           <label htmlFor="status" className="block text-xs font-medium text-slate-700">Estado</label>
           <select id="status" name="status" defaultValue={status ?? "ALL"} className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm">
             <option value="ALL">Todos</option>
-            {(["SUBMITTED", "APPROVED", "REJECTED"] as const).map((s) => (
+            {(["SUBMITTED", "APPROVED", "REJECTED", "PAID"] as const).map((s) => (
               <option key={s} value={s}>{reportStatusLabels[s]}</option>
             ))}
           </select>
