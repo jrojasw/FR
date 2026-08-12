@@ -1,0 +1,310 @@
+"use client";
+
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { finalizeReportAction } from "@/app/rendiciones/actions";
+import { AttachmentUploader } from "@/components/AttachmentUploader";
+import { SignaturePad } from "@/components/SignaturePad";
+import { computeTotals } from "@/lib/reports";
+import { formatCurrency, documentTypeLabels } from "@/lib/format";
+
+type ItemRow = {
+  proveedor: string;
+  tipoDocumento: "BOLETA" | "FACTURA" | "RECIBO";
+  numeroDocumento: string;
+  montoTotal: string;
+};
+
+type Attachment = { id: string; fileName: string; mimeType: string; kind: "PHOTO" | "DOCUMENT" };
+
+function emptyRow(): ItemRow {
+  return { proveedor: "", tipoDocumento: "BOLETA", numeroDocumento: "", montoTotal: "" };
+}
+
+export function ReportEditor({
+  reportId,
+  correlativo,
+  initial,
+  initialAttachments,
+}: {
+  reportId: string;
+  correlativo: number;
+  initial: {
+    nombre: string;
+    cargo: string;
+    fecha: string;
+    fondoPorRendir: string;
+    glosa: string;
+  };
+  initialAttachments: Attachment[];
+}) {
+  const router = useRouter();
+  const [nombre, setNombre] = useState(initial.nombre);
+  const [cargo, setCargo] = useState(initial.cargo);
+  const [fecha, setFecha] = useState(initial.fecha);
+  const [fondoPorRendir, setFondoPorRendir] = useState(initial.fondoPorRendir);
+  const [glosa, setGlosa] = useState(initial.glosa);
+  const [items, setItems] = useState<ItemRow[]>([emptyRow()]);
+  const [rut, setRut] = useState("");
+  const [signatureData, setSignatureData] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const totals = useMemo(
+    () =>
+      computeTotals(
+        Number(fondoPorRendir) || 0,
+        items.map((i) => ({ montoTotal: Number(i.montoTotal) || 0 }))
+      ),
+    [fondoPorRendir, items]
+  );
+
+  function updateItem(index: number, patch: Partial<ItemRow>) {
+    setItems((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  }
+
+  function addItem() {
+    setItems((prev) => [...prev, emptyRow()]);
+  }
+
+  function removeItem(index: number) {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function handleSubmit() {
+    setError(null);
+
+    if (!nombre.trim() || !cargo.trim() || !fecha || !fondoPorRendir || !glosa.trim()) {
+      setError("Completa todos los datos del encabezado.");
+      return;
+    }
+    const validItems = items.filter((i) => i.proveedor.trim() && i.numeroDocumento.trim() && i.montoTotal);
+    if (validItems.length === 0) {
+      setError("Agrega al menos un documento en el detalle.");
+      return;
+    }
+    if (!rut.trim()) {
+      setError("Ingresa tu RUT.");
+      return;
+    }
+    if (!signatureData) {
+      setError("Falta tu firma.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.set("nombre", nombre.trim());
+    formData.set("cargo", cargo.trim());
+    formData.set("fecha", fecha);
+    formData.set("fondoPorRendir", fondoPorRendir);
+    formData.set("glosa", glosa.trim());
+    formData.set("items", JSON.stringify(validItems.map((i) => ({ ...i, montoTotal: Number(i.montoTotal) }))));
+    formData.set("rut", rut.trim());
+    formData.set("signatureData", signatureData);
+
+    startTransition(async () => {
+      const result = await finalizeReportAction(reportId, formData);
+      if (result?.error) {
+        setError(result.error);
+      } else {
+        router.refresh();
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-8">
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">Encabezado</h2>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+            N° {correlativo}
+          </span>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Nombre</label>
+            <input
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Cargo</label>
+            <input
+              value={cargo}
+              onChange={(e) => setCargo(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Fecha</label>
+            <input
+              type="date"
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Fondo por rendir</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={fondoPorRendir}
+              onChange={(e) => setFondoPorRendir(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-slate-700">Glosa</label>
+            <input
+              value={glosa}
+              onChange={(e) => setGlosa(e.target.value)}
+              placeholder="Ej: materiales, alimentación"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">Detalle de documentos</h2>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="text-xs uppercase text-slate-500">
+              <tr>
+                <th className="py-2 pr-2">Proveedor</th>
+                <th className="py-2 pr-2">Tipo documento</th>
+                <th className="py-2 pr-2">N° documento</th>
+                <th className="py-2 pr-2">Monto total</th>
+                <th className="py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((row, index) => (
+                <tr key={index} className="border-t border-slate-100">
+                  <td className="py-2 pr-2">
+                    <input
+                      value={row.proveedor}
+                      onChange={(e) => updateItem(index, { proveedor: e.target.value })}
+                      className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                    />
+                  </td>
+                  <td className="py-2 pr-2">
+                    <select
+                      value={row.tipoDocumento}
+                      onChange={(e) => updateItem(index, { tipoDocumento: e.target.value as ItemRow["tipoDocumento"] })}
+                      className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                    >
+                      {Object.entries(documentTypeLabels).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="py-2 pr-2">
+                    <input
+                      value={row.numeroDocumento}
+                      onChange={(e) => updateItem(index, { numeroDocumento: e.target.value })}
+                      className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                    />
+                  </td>
+                  <td className="py-2 pr-2">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={row.montoTotal}
+                      onChange={(e) => updateItem(index, { montoTotal: e.target.value })}
+                      className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                    />
+                  </td>
+                  <td className="py-2 text-right">
+                    {items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeItem(index)}
+                        className="text-sm text-red-600 hover:text-red-800"
+                      >
+                        Eliminar
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <button
+          type="button"
+          onClick={addItem}
+          className="mt-3 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          + Agregar línea
+        </button>
+
+        <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-4 sm:grid-cols-4">
+          <div>
+            <p className="text-xs uppercase text-slate-500">Total rendido</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">{formatCurrency(totals.totalRendido)}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase text-slate-500">Saldo por rendir</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">{formatCurrency(totals.saldoPorRendir)}</p>
+          </div>
+          <div className="col-span-2">
+            <p className="text-xs uppercase text-slate-500">Reembolso</p>
+            <p className={`mt-1 text-lg font-semibold ${totals.esReembolso ? "text-amber-700" : "text-slate-400"}`}>
+              {totals.esReembolso ? `Sí — ${formatCurrency(totals.montoReembolso)}` : "No corresponde"}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">Fotos y documentos</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Toma fotos de tus boletas/facturas, súbelas desde tu galería, o adjunta un documento digital.
+        </p>
+        <div className="mt-4">
+          <AttachmentUploader reportId={reportId} initialAttachments={initialAttachments} />
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">Firma</h2>
+        <div className="mt-4 max-w-xl">
+          <SignaturePad onChange={setSignatureData} />
+        </div>
+        <div className="mt-4 max-w-xs">
+          <label className="block text-sm font-medium text-slate-700">RUT</label>
+          <input
+            value={rut}
+            onChange={(e) => setRut(e.target.value)}
+            placeholder="12.345.678-9"
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+          />
+        </div>
+      </section>
+
+      {error ? (
+        <p role="alert" className="text-sm text-red-600">
+          {error}
+        </p>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={isPending}
+        className="w-full rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 disabled:opacity-60 sm:w-auto"
+      >
+        {isPending ? "Enviando…" : "Enviar rendición"}
+      </button>
+    </div>
+  );
+}

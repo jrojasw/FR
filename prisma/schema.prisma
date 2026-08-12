@@ -1,0 +1,136 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SOLICITANTE
+  APROBADOR
+  ADMIN
+}
+
+enum ReportStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum DocumentType {
+  BOLETA
+  FACTURA
+  RECIBO
+}
+
+enum AttachmentKind {
+  PHOTO
+  DOCUMENT
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  cargo     String?
+  email     String   @unique
+  role      Role     @default(SOLICITANTE)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  reports         ExpenseReport[] @relation("ReportOwner")
+  reviewedReports ExpenseReport[] @relation("ReportReviewer")
+  otpCodes        OtpCode[]
+}
+
+// Código de un solo uso enviado por correo para iniciar sesión (passwordless)
+model OtpCode {
+  id         String    @id @default(cuid())
+  email      String
+  code       String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  @@index([email])
+}
+
+// Rendición de Fondos Fijos
+model ExpenseReport {
+  id          String @id @default(cuid())
+  correlativo Int    @unique @default(autoincrement())
+
+  nombre String
+  cargo  String
+  fecha  DateTime
+
+  fondoPorRendir Decimal @db.Decimal(12, 2)
+  glosa          String
+
+  // Totales calculados al enviar (se guardan como respaldo del registro)
+  totalRendido   Decimal @default(0) @db.Decimal(12, 2)
+  saldoPorRendir Decimal @default(0) @db.Decimal(12, 2)
+  esReembolso    Boolean @default(false)
+  montoReembolso Decimal @default(0) @db.Decimal(12, 2)
+
+  rut           String?
+  signatureData String? @db.Text
+
+  status        ReportStatus @default(DRAFT)
+  createdAt     DateTime     @default(now())
+  submittedAt   DateTime?
+  reviewedAt    DateTime?
+  reviewComment String?
+
+  user   User   @relation("ReportOwner", fields: [userId], references: [id])
+  userId String
+
+  reviewer   User?   @relation("ReportReviewer", fields: [reviewerId], references: [id])
+  reviewerId String?
+
+  items       ExpenseItem[]
+  attachments Attachment[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+// Línea de detalle: Proveedor / Tipo documento / N° documento / Monto Total
+model ExpenseItem {
+  id              String       @id @default(cuid())
+  proveedor       String
+  tipoDocumento   DocumentType
+  numeroDocumento String
+  montoTotal      Decimal      @db.Decimal(12, 2)
+  createdAt       DateTime     @default(now())
+
+  report   ExpenseReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  reportId String
+
+  @@index([reportId])
+}
+
+// Fotos de comprobantes o documentos digitales adjuntos a la rendición (máx. 25)
+model Attachment {
+  id        String         @id @default(cuid())
+  fileName  String
+  filePath  String
+  mimeType  String
+  size      Int
+  kind      AttachmentKind
+  createdAt DateTime       @default(now())
+
+  report   ExpenseReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  reportId String
+
+  @@index([reportId])
+}
