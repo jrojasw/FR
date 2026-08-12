@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: fondos_a_rendir
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/fondos_a_rendir?schema=public
+      SESSION_SECRET: ${SESSION_SECRET:-cambia-este-valor-por-uno-aleatorio-y-largo}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-Fondos a Rendir <onboarding@resend.dev>}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-jorge.rojas@copayapunos.cl}
+      APPROVER_EMAIL: ${APPROVER_EMAIL:-williams.arce@copayapunos.cl}
+      PAYMENT_NOTICE_EMAILS: ${PAYMENT_NOTICE_EMAILS:-contabilidad@copayapunos.cl,andres.rojas@copayapunos.cl,williams.arce@copayapunos.cl}
+      APP_URL: ${APP_URL:-}
+      ATTACHMENTS_DIR: /app/storage/attachments
+    volumes:
+      - attachments:/app/storage/attachments
+
+volumes:
+  db_data:
+  attachments:

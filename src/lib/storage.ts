@@ -10,7 +10,7 @@ function sanitizeFileName(name: string): string {
 }
 
 function attachmentDir(reportId: string): string {
-  return path.join(STORAGE_ROOT, reportId);
+  return path.join(/* turbopackIgnore: true */ STORAGE_ROOT, reportId);
 }
 
 export async function saveAttachmentFile(
@@ -27,9 +27,9 @@ export async function saveAttachmentFile(
 }
 
 export async function readAttachmentFile(relativePath: string): Promise<Buffer> {
-  return readFile(path.join(STORAGE_ROOT, relativePath));
+  return readFile(path.join(/* turbopackIgnore: true */ STORAGE_ROOT, relativePath));
 }
 
 export async function deleteAttachmentFile(relativePath: string): Promise<void> {
-  await unlink(path.join(STORAGE_ROOT, relativePath)).catch(() => {});
+  await unlink(path.join(/* turbopackIgnore: true */ STORAGE_ROOT, relativePath)).catch(() => {});
 }

@@ -96,3 +96,37 @@ con un registro exportable a Excel/CSV de todas las rendiciones.
   (`next.config.ts`) para la acción de envío final (incluye la firma en
   base64). La subida de fotos/documentos usa un Route Handler dedicado
   (`/api/rendiciones/[id]/adjuntos`), sin ese límite.
+- Un hosting compartido tradicional (cPanel/Plesk para WordPress/PHP) **no
+  sirve**: esta app necesita Node.js corriendo como proceso persistente,
+  PostgreSQL, y disco persistente para los archivos subidos.
+
+## Desplegar en Railway (recomendado)
+
+El repo incluye un `Dockerfile` listo para producción (build en dos etapas,
+`output: "standalone"` de Next.js, y migraciones automáticas al arrancar).
+Railway lo detecta solo.
+
+1. Crea una cuenta en [railway.app](https://railway.app) (puedes entrar con tu cuenta de GitHub).
+2. **New Project → Deploy from GitHub repo** → selecciona este repositorio y la rama `claude/fondos-a-rendir-app-cldjg7` (o `main` una vez que se mezcle el PR). Railway detecta el `Dockerfile` automáticamente.
+3. En el mismo proyecto, **+ New → Database → Add PostgreSQL**. Railway crea la base y una variable `DATABASE_URL` interna.
+4. En el servicio de la app, pestaña **Variables**, agrega:
+   - `DATABASE_URL` → referencia la del servicio Postgres (Railway te deja enlazarla con `${{Postgres.DATABASE_URL}}`)
+   - `SESSION_SECRET` → un valor largo y aleatorio
+   - `ADMIN_EMAIL`, `APPROVER_EMAIL`, `PAYMENT_NOTICE_EMAILS` → como en `.env.example`
+   - `RESEND_API_KEY` y `EMAIL_FROM` → cuando tengas cuenta de Resend (mientras tanto puedes dejarlas vacías: el PIN se mostrará en pantalla)
+   - `ATTACHMENTS_DIR` → `/app/storage/attachments`
+5. En **Settings → Volumes**, agrega un volumen montado en `/app/storage/attachments` (así las fotos/certificados no se pierden en cada despliegue).
+6. En **Settings → Networking**, genera un dominio público (`*.up.railway.app` gratis, o conecta tu propio dominio).
+7. Copia esa URL y agrégala como variable `APP_URL` (ej. `https://tu-app.up.railway.app`) para que los enlaces de los correos apunten bien.
+8. Despliega. Railway construye la imagen, corre `prisma migrate deploy` automáticamente al iniciar el contenedor (ver `docker-entrypoint.sh`), y levanta la app.
+
+**Render** funciona de forma muy similar (Web Service desde el repo con Dockerfile + PostgreSQL managed + Persistent Disk).
+
+### Probar el Dockerfile en tu computador (opcional)
+
+```bash
+cp .env.example .env   # completa los valores
+docker compose up --build
+```
+
+Esto levanta Postgres + la app en `http://localhost:3000`, igual que en producción.
