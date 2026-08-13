@@ -44,7 +44,8 @@ con un registro exportable a Excel/CSV de todas las rendiciones.
    | `APPROVER_EMAIL` | Correo con rol Aprobador (por defecto `williams.arce@copayapunos.cl`) |
    | `PAYMENT_NOTICE_EMAILS` | Correos (separados por coma) que reciben el certificado de pago cuando el administrador lo envía |
    | `APP_URL` | URL pública de la app para los enlaces en los correos (opcional, se infiere del request si se deja vacío) |
-   | `ATTACHMENTS_DIR` | Carpeta donde se guardan las fotos/documentos adjuntos (por defecto `./storage/attachments`) |
+   | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` | Credenciales de Cloudflare R2 para guardar fotos/documentos/certificados. **Recomendado en producción** — ver [sección R2](#almacenamiento-de-archivos-cloudflare-r2) |
+   | `ATTACHMENTS_DIR` | Si las variables `R2_*` están vacías, carpeta en disco local donde se guardan los adjuntos en su lugar (por defecto `./storage/attachments`, solo para desarrollo) |
 
    Cualquier otro correo que inicie sesión queda automáticamente como
    **Solicitante**; los roles Aprobador/Administrador son fijos según
@@ -69,36 +70,59 @@ con un registro exportable a Excel/CSV de todas las rendiciones.
 ## Flujo de la aplicación
 
 - **Solicitante**: crea una rendición (correlativo automático), completa
-  nombre/cargo/fecha/fondo por rendir/glosa, agrega el detalle
-  (proveedor, tipo de documento, N° documento, monto — con cálculo en vivo
-  de total rendido, saldo por rendir y reembolso), adjunta hasta 25
+  nombre/cargo/fecha, agrega el detalle de documentos (glosa, proveedor,
+  tipo de documento, N° documento, monto — con cálculo en vivo del total
+  rendido y el reembolso correspondiente), adjunta hasta 25
   fotos/documentos, firma con el dedo/mouse e ingresa su RUT para enviar.
   El aprobador recibe un correo de notificación.
 - **Aprobador**: ve la lista de rendiciones pendientes y puede aprobar o
   rechazar con un comentario. El solicitante recibe un correo con la
-  decisión.
+  decisión, y al aprobar también se avisa al administrador para que suba
+  el comprobante de pago.
 - **Administrador**: además de aprobar, en cada rendición **Aprobada** sube
-  el certificado de pago del banco (PDF o imagen) y presiona "Enviar
-  certificado y marcar como pagada" — esto envía el certificado por correo
-  a `PAYMENT_NOTICE_EMAILS` y cambia el estado a **Pagada**, cerrando el
-  ciclo. También tiene acceso a `/admin/registro`, un registro de todas las
-  rendiciones agrupado por usuario, año, mes y día, exportable a Excel
-  (`.xlsx`) o CSV, y con opción de enviarlo por correo.
+  el comprobante de la transferencia del banco (PDF o imagen) y presiona
+  "Enviar certificado y marcar como pagada" — esto envía el comprobante por
+  correo a `PAYMENT_NOTICE_EMAILS`, avisa al solicitante que fue pagada, y
+  cambia el estado a **Pagada**, cerrando el ciclo. También tiene acceso a
+  `/admin/registro`, un registro de todas las rendiciones agrupado por
+  usuario, año, mes y día, exportable a Excel (`.xlsx`) o CSV, y con
+  opción de enviarlo por correo.
+
+## Almacenamiento de archivos (Cloudflare R2)
+
+Las fotos, documentos y certificados de pago se guardan en
+[Cloudflare R2](https://developers.cloudflare.com/r2/) cuando las variables
+`R2_*` están configuradas — así los archivos no dependen del disco del
+servidor donde corre la app (sobreviven aunque se reinicie el contenedor,
+se cambie de hosting, etc.). Sin esas variables, cae a disco local
+(`ATTACHMENTS_DIR`), solo recomendado para desarrollo.
+
+Para crear el bucket y las credenciales:
+
+1. Crea una cuenta gratis en [dash.cloudflare.com](https://dash.cloudflare.com).
+2. En el menú lateral, ve a **R2 Object Storage** → **Create bucket**. Ponle un nombre (ej. `fondos-a-rendir`) y crea el bucket. El plan gratis incluye 10 GB de almacenamiento al mes.
+3. Ve a **R2 → Manage API tokens** (o "Account API tokens") → **Create API token**. Dale permisos de **Object Read & Write**, y limita el acceso al bucket que creaste si te lo permite.
+4. Copia los 3 valores que te muestra: **Access Key ID**, **Secret Access Key**, y el **Account ID** de Cloudflare (aparece en la URL del dashboard o en la barra lateral de la cuenta).
+5. Completa las variables de entorno:
+   - `R2_ACCOUNT_ID`
+   - `R2_ACCESS_KEY_ID`
+   - `R2_SECRET_ACCESS_KEY`
+   - `R2_BUCKET_NAME` (el nombre que le pusiste al bucket)
+
+Con esas 4 variables configuradas (en Railway: pestaña Variables del
+servicio), los adjuntos nuevos se guardan automáticamente en R2 — no hace
+falta ningún otro cambio en el código ni en el volumen de disco.
 
 ## Notas de despliegue
 
-- Las fotos/documentos se guardan en disco (`ATTACHMENTS_DIR`). Esto
-  funciona bien en un servidor propio o contenedor con disco persistente
-  (Docker/VPS). Si se despliega en una plataforma serverless sin disco
-  persistente (Vercel, etc.), hay que migrar el almacenamiento a un
-  servicio externo (S3, Cloudflare R2, etc.).
 - El límite de tamaño de body para Server Actions se configuró en 8 MB
   (`next.config.ts`) para la acción de envío final (incluye la firma en
   base64). La subida de fotos/documentos usa un Route Handler dedicado
   (`/api/rendiciones/[id]/adjuntos`), sin ese límite.
 - Un hosting compartido tradicional (cPanel/Plesk para WordPress/PHP) **no
-  sirve**: esta app necesita Node.js corriendo como proceso persistente,
-  PostgreSQL, y disco persistente para los archivos subidos.
+  sirve**: esta app necesita Node.js corriendo como proceso persistente y
+  PostgreSQL. Los archivos subidos ya no dependen de disco persistente si
+  se configura Cloudflare R2 (ver sección anterior).
 
 ## Desplegar en Railway (recomendado)
 
@@ -114,8 +138,8 @@ Railway lo detecta solo.
    - `SESSION_SECRET` → un valor largo y aleatorio
    - `ADMIN_EMAIL`, `APPROVER_EMAIL`, `PAYMENT_NOTICE_EMAILS` → como en `.env.example`
    - `RESEND_API_KEY` y `EMAIL_FROM` → cuando tengas cuenta de Resend (mientras tanto puedes dejarlas vacías: el PIN se mostrará en pantalla)
-   - `ATTACHMENTS_DIR` → `/app/storage/attachments`
-5. En **Settings → Volumes**, agrega un volumen montado en `/app/storage/attachments` (así las fotos/certificados no se pierden en cada despliegue).
+   - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` → credenciales de Cloudflare R2 (ver sección [Almacenamiento de archivos](#almacenamiento-de-archivos-cloudflare-r2))
+5. Con R2 configurado **no hace falta** agregar un volumen — los adjuntos ya no se guardan en el disco del contenedor. (Si prefieres no usar R2, en **Settings → Volumes** puedes montar un volumen en `/app/storage/attachments` y dejar `ATTACHMENTS_DIR` apuntando ahí en vez de las variables `R2_*`.)
 6. En **Settings → Networking**, genera un dominio público (`*.up.railway.app` gratis, o conecta tu propio dominio).
 7. Copia esa URL y agrégala como variable `APP_URL` (ej. `https://tu-app.up.railway.app`) para que los enlaces de los correos apunten bien.
 8. Despliega. Railway construye la imagen, corre `prisma migrate deploy` automáticamente al iniciar el contenedor (ver `docker-entrypoint.sh`), y levanta la app.

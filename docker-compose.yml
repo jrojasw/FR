@@ -27,6 +27,10 @@ services:
       APPROVER_EMAIL: ${APPROVER_EMAIL:-williams.arce@copayapunos.cl}
       PAYMENT_NOTICE_EMAILS: ${PAYMENT_NOTICE_EMAILS:-contabilidad@copayapunos.cl,andres.rojas@copayapunos.cl,williams.arce@copayapunos.cl}
       APP_URL: ${APP_URL:-}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-}
       ATTACHMENTS_DIR: /app/storage/attachments
     volumes:
       - attachments:/app/storage/attachments
