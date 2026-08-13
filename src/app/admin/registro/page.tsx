@@ -111,7 +111,7 @@ export default async function AdminRegistroPage({
                         <tr>
                           <th className="px-4 py-2">N°</th>
                           <th className="px-4 py-2">Usuario</th>
-                          <th className="px-4 py-2">Glosa</th>
+                          <th className="px-4 py-2">N° documentos</th>
                           <th className="px-4 py-2">Total rendido</th>
                           <th className="px-4 py-2">Estado</th>
                           <th className="px-4 py-2">Adjuntos</th>
@@ -123,7 +123,7 @@ export default async function AdminRegistroPage({
                           <tr key={report.id}>
                             <td className="px-4 py-2 font-medium text-slate-900">{report.correlativo}</td>
                             <td className="px-4 py-2 text-slate-600">{report.user.name ?? report.user.email}</td>
-                            <td className="px-4 py-2 text-slate-600">{report.glosa}</td>
+                            <td className="px-4 py-2 text-slate-600">{report.items.length}</td>
                             <td className="px-4 py-2 text-slate-600">{formatCurrency(report.totalRendido.toString())}</td>
                             <td className="px-4 py-2 text-slate-600">{reportStatusLabels[report.status]}</td>
                             <td className="px-4 py-2 text-slate-600">{report.attachments.length}</td>

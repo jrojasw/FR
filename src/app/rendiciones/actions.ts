@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
 import { getApproverEmail } from "@/lib/roles";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, documentTypeLabels } from "@/lib/format";
 import { computeTotals } from "@/lib/reports";
 import { isValidRut, formatRut } from "@/lib/rut";
 import {
@@ -25,8 +25,6 @@ export async function createDraftReportAction() {
       nombre: user.name ?? "",
       cargo: user.cargo ?? "",
       fecha: new Date(),
-      fondoPorRendir: 0,
-      glosa: "",
       userId: session.sub,
     },
   });
@@ -64,8 +62,6 @@ export async function finalizeReportAction(
     nombre: formData.get("nombre"),
     cargo: formData.get("cargo"),
     fecha: formData.get("fecha"),
-    fondoPorRendir: formData.get("fondoPorRendir"),
-    glosa: formData.get("glosa"),
   });
   if (!headerParsed.success) {
     return { error: headerParsed.error.issues[0]?.message ?? "Revisa el encabezado." };
@@ -98,15 +94,16 @@ export async function finalizeReportAction(
     return { error: "Adjunta al menos un comprobante." };
   }
 
-  const { nombre, cargo, fecha, fondoPorRendir, glosa } = headerParsed.data;
+  const { nombre, cargo, fecha } = headerParsed.data;
   const { items } = itemsParsed.data;
-  const totals = computeTotals(fondoPorRendir, items);
+  const totals = computeTotals(items);
 
   await prisma.$transaction([
     prisma.expenseItem.deleteMany({ where: { reportId } }),
     prisma.expenseItem.createMany({
       data: items.map((item) => ({
         reportId,
+        glosa: item.glosa,
         proveedor: item.proveedor,
         tipoDocumento: item.tipoDocumento,
         numeroDocumento: item.numeroDocumento,
@@ -119,11 +116,7 @@ export async function finalizeReportAction(
         nombre,
         cargo,
         fecha: new Date(fecha),
-        fondoPorRendir,
-        glosa,
         totalRendido: totals.totalRendido,
-        saldoPorRendir: totals.saldoPorRendir,
-        esReembolso: totals.esReembolso,
         montoReembolso: totals.montoReembolso,
         rut: formatRut(finalizeParsed.data.rut),
         signatureData: finalizeParsed.data.signatureData,
@@ -140,6 +133,13 @@ export async function finalizeReportAction(
   const h = await headers();
   const baseUrl = process.env.APP_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
 
+  const itemsHtml = items
+    .map(
+      (item) =>
+        `<li>${documentTypeLabels[item.tipoDocumento]} N° ${item.numeroDocumento} — ${item.proveedor} (${item.glosa}): ${formatCurrency(item.montoTotal)}</li>`
+    )
+    .join("");
+
   await sendEmail({
     to: getApproverEmail(),
     subject: `Nueva rendición N° ${report.correlativo} de ${nombre}`,
@@ -148,11 +148,10 @@ export async function finalizeReportAction(
       <ul>
         <li>Correlativo: N° ${report.correlativo}</li>
         <li>Fecha: ${formatDate(new Date(fecha))}</li>
-        <li>Glosa: ${glosa}</li>
-        <li>Fondo por rendir: ${formatCurrency(fondoPorRendir)}</li>
-        <li>Total rendido: ${formatCurrency(totals.totalRendido)}</li>
-        ${totals.esReembolso ? `<li>Reembolso solicitado: ${formatCurrency(totals.montoReembolso)}</li>` : ""}
       </ul>
+      <p>Documentos:</p>
+      <ul>${itemsHtml}</ul>
+      <p><strong>Total rendido / Reembolso correspondiente: ${formatCurrency(totals.totalRendido)}</strong></p>
       <p><a href="${baseUrl}/aprobaciones/${reportId}">Revisar rendición</a></p>
     `,
   });

@@ -13,10 +13,7 @@ type ExportRow = {
   tipoDocumento: string;
   numeroDocumento: string;
   montoItem: number;
-  fondoPorRendir: number;
   totalRendido: number;
-  saldoPorRendir: number;
-  esReembolso: string;
   montoReembolso: number;
   estado: string;
   adjuntos: number;
@@ -34,11 +31,8 @@ const COLUMNS: { key: keyof ExportRow; header: string }[] = [
   { key: "tipoDocumento", header: "Tipo documento" },
   { key: "numeroDocumento", header: "N° documento" },
   { key: "montoItem", header: "Monto documento" },
-  { key: "fondoPorRendir", header: "Fondo por rendir" },
   { key: "totalRendido", header: "Total rendido" },
-  { key: "saldoPorRendir", header: "Saldo por rendir" },
-  { key: "esReembolso", header: "Es reembolso" },
-  { key: "montoReembolso", header: "Monto reembolso" },
+  { key: "montoReembolso", header: "Reembolso correspondiente" },
   { key: "estado", header: "Estado" },
   { key: "adjuntos", header: "N° adjuntos" },
   { key: "fechaPago", header: "Fecha de pago" },
@@ -54,11 +48,7 @@ export function buildExportRows(reports: RegistryReport[]): ExportRow[] {
       correo: report.user.email,
       correlativo: report.correlativo,
       fecha: report.fecha.toISOString().slice(0, 10),
-      glosa: report.glosa,
-      fondoPorRendir: Number(report.fondoPorRendir.toString()),
       totalRendido: Number(report.totalRendido.toString()),
-      saldoPorRendir: Number(report.saldoPorRendir.toString()),
-      esReembolso: report.esReembolso ? "Sí" : "No",
       montoReembolso: Number(report.montoReembolso.toString()),
       estado: reportStatusLabels[report.status] ?? report.status,
       adjuntos: report.attachments.length,
@@ -67,13 +57,14 @@ export function buildExportRows(reports: RegistryReport[]): ExportRow[] {
     };
 
     if (report.items.length === 0) {
-      rows.push({ ...base, proveedor: "", tipoDocumento: "", numeroDocumento: "", montoItem: 0 });
+      rows.push({ ...base, glosa: "", proveedor: "", tipoDocumento: "", numeroDocumento: "", montoItem: 0 });
       continue;
     }
 
     for (const item of report.items) {
       rows.push({
         ...base,
+        glosa: item.glosa,
         proveedor: item.proveedor,
         tipoDocumento: documentTypeLabels[item.tipoDocumento] ?? item.tipoDocumento,
         numeroDocumento: item.numeroDocumento,

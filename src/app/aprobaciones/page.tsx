@@ -23,7 +23,6 @@ export default async function AprobacionesPage() {
               <th className="px-4 py-3">N°</th>
               <th className="px-4 py-3">Nombre</th>
               <th className="px-4 py-3">Fecha</th>
-              <th className="px-4 py-3">Fondo por rendir</th>
               <th className="px-4 py-3">Total rendido</th>
               <th className="px-4 py-3" />
             </tr>
@@ -36,7 +35,6 @@ export default async function AprobacionesPage() {
                   {report.nombre} <span className="text-slate-400">· {report.user.email}</span>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{formatDate(report.fecha)}</td>
-                <td className="px-4 py-3 text-slate-600">{formatCurrency(report.fondoPorRendir.toString())}</td>
                 <td className="px-4 py-3 text-slate-600">{formatCurrency(report.totalRendido.toString())}</td>
                 <td className="px-4 py-3 text-right">
                   <Link href={`/aprobaciones/${report.id}`} className="text-sm font-medium text-slate-700 hover:text-slate-900">
@@ -47,7 +45,7 @@ export default async function AprobacionesPage() {
             ))}
             {reports.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                   No hay rendiciones pendientes de aprobación.
                 </td>
               </tr>

@@ -32,8 +32,7 @@ export default async function RendicionesPage() {
             <tr>
               <th className="px-4 py-3">N°</th>
               <th className="px-4 py-3">Fecha</th>
-              <th className="px-4 py-3">Glosa</th>
-              <th className="px-4 py-3">Fondo por rendir</th>
+              <th className="px-4 py-3">Total rendido</th>
               <th className="px-4 py-3">Estado</th>
               <th className="px-4 py-3" />
             </tr>
@@ -43,8 +42,7 @@ export default async function RendicionesPage() {
               <tr key={report.id}>
                 <td className="px-4 py-3 font-medium text-slate-900">{report.correlativo}</td>
                 <td className="px-4 py-3 text-slate-600">{formatDate(report.fecha)}</td>
-                <td className="px-4 py-3 text-slate-600">{report.glosa || "—"}</td>
-                <td className="px-4 py-3 text-slate-600">{formatCurrency(report.fondoPorRendir.toString())}</td>
+                <td className="px-4 py-3 text-slate-600">{formatCurrency(report.totalRendido.toString())}</td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${reportStatusStyles[report.status]}`}>
                     {reportStatusLabels[report.status]}
@@ -59,7 +57,7 @@ export default async function RendicionesPage() {
             ))}
             {reports.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                   Aún no tienes rendiciones. Crea la primera con &ldquo;Nueva rendición&rdquo;.
                 </td>
               </tr>

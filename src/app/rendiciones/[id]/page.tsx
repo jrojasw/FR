@@ -40,8 +40,6 @@ export default async function RendicionDetailPage({
                 nombre: report.nombre,
                 cargo: report.cargo,
                 fecha: toDateInputValue(report.fecha),
-                fondoPorRendir: report.fondoPorRendir.toString(),
-                glosa: report.glosa,
               }}
               initialAttachments={report.attachments}
             />

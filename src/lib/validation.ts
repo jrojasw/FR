@@ -13,11 +13,10 @@ export const createReportSchema = z.object({
   nombre: z.string().trim().min(2, "Nombre muy corto"),
   cargo: z.string().trim().min(2, "Cargo muy corto"),
   fecha: z.string().min(1, "Fecha requerida"),
-  fondoPorRendir: z.coerce.number().positive("Debe ser mayor a 0"),
-  glosa: z.string().trim().min(2, "Ingresa una glosa (ej: materiales, alimentación)"),
 });
 
 export const itemRowSchema = z.object({
+  glosa: z.string().trim().min(2, "Ingresa una glosa (ej: materiales, alimentación)"),
   proveedor: z.string().trim().min(2, "Proveedor muy corto"),
   tipoDocumento: z.enum(["BOLETA", "FACTURA", "RECIBO"]),
   numeroDocumento: z.string().trim().min(1, "N° documento requerido"),

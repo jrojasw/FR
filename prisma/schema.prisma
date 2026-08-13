@@ -75,13 +75,9 @@ model ExpenseReport {
   cargo  String
   fecha  DateTime
 
-  fondoPorRendir Decimal @db.Decimal(12, 2)
-  glosa          String
-
-  // Totales calculados al enviar (se guardan como respaldo del registro)
+  // Totales calculados al enviar (se guardan como respaldo del registro).
+  // El reembolso corresponde siempre al total rendido (suma de los documentos).
   totalRendido   Decimal @default(0) @db.Decimal(12, 2)
-  saldoPorRendir Decimal @default(0) @db.Decimal(12, 2)
-  esReembolso    Boolean @default(false)
   montoReembolso Decimal @default(0) @db.Decimal(12, 2)
 
   rut           String?
@@ -113,9 +109,10 @@ model ExpenseReport {
   @@index([status])
 }
 
-// Línea de detalle: Proveedor / Tipo documento / N° documento / Monto Total
+// Línea de detalle: Glosa / Proveedor / Tipo documento / N° documento / Monto Total
 model ExpenseItem {
   id              String       @id @default(cuid())
+  glosa           String
   proveedor       String
   tipoDocumento   DocumentType
   numeroDocumento String

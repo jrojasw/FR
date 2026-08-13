@@ -52,7 +52,7 @@ export async function reviewReportAction(
     to: report.user.email,
     subject: `Tu rendición N° ${report.correlativo} fue ${decisionLabel}`,
     html: `
-      <p>Tu rendición N° ${report.correlativo} (${formatCurrency(report.fondoPorRendir.toString())}) fue <strong>${decisionLabel}</strong>.</p>
+      <p>Tu rendición N° ${report.correlativo} (${formatCurrency(report.totalRendido.toString())}) fue <strong>${decisionLabel}</strong>.</p>
       ${parsed.data.reviewComment ? `<p>Comentario: ${parsed.data.reviewComment}</p>` : ""}
       <p><a href="${baseUrl}/rendiciones/${reportId}">Ver detalle</a></p>
     `,
@@ -92,10 +92,7 @@ export async function sendPaymentCertificateAction(
       <p>Se adjunta el certificado de pago del banco para la rendición N° ${report.correlativo} de ${report.nombre} (${report.cargo}).</p>
       <ul>
         <li>Fecha rendición: ${formatDate(report.fecha)}</li>
-        <li>Glosa: ${report.glosa}</li>
-        <li>Fondo por rendir: ${formatCurrency(report.fondoPorRendir.toString())}</li>
-        <li>Total rendido: ${formatCurrency(report.totalRendido.toString())}</li>
-        ${report.esReembolso ? `<li>Reembolso: ${formatCurrency(report.montoReembolso.toString())}</li>` : ""}
+        <li>Total rendido / Reembolso correspondiente: ${formatCurrency(report.totalRendido.toString())}</li>
       </ul>
       <p><a href="${baseUrl}/aprobaciones/${reportId}">Ver rendición</a></p>
     `,

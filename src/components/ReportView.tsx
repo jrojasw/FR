@@ -15,11 +15,7 @@ export type ReportViewData = {
   nombre: string;
   cargo: string;
   fecha: Date;
-  fondoPorRendir: Decimalish;
-  glosa: string;
   totalRendido: Decimalish;
-  saldoPorRendir: Decimalish;
-  esReembolso: boolean;
   montoReembolso: Decimalish;
   rut: string | null;
   signatureData: string | null;
@@ -33,6 +29,7 @@ export type ReportViewData = {
   paidBy?: { name: string | null; email: string } | null;
   items: {
     id: string;
+    glosa: string;
     proveedor: string;
     tipoDocumento: string;
     numeroDocumento: string;
@@ -69,23 +66,16 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
             <dt className="text-slate-500">Fecha</dt>
             <dd className="font-medium text-slate-900">{formatDate(report.fecha)}</dd>
           </div>
-          <div>
-            <dt className="text-slate-500">Fondo por rendir</dt>
-            <dd className="font-medium text-slate-900">{formatCurrency(report.fondoPorRendir.toString())}</dd>
-          </div>
-          <div className="sm:col-span-2">
-            <dt className="text-slate-500">Glosa</dt>
-            <dd className="font-medium text-slate-900">{report.glosa}</dd>
-          </div>
         </dl>
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-900">Detalle de documentos</h2>
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[560px] text-left text-sm">
+          <table className="w-full min-w-[680px] text-left text-sm">
             <thead className="text-xs uppercase text-slate-500">
               <tr>
+                <th className="py-2 pr-2">Glosa</th>
                 <th className="py-2 pr-2">Proveedor</th>
                 <th className="py-2 pr-2">Tipo documento</th>
                 <th className="py-2 pr-2">N° documento</th>
@@ -95,6 +85,7 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
             <tbody>
               {report.items.map((item) => (
                 <tr key={item.id} className="border-t border-slate-100">
+                  <td className="py-2 pr-2">{item.glosa}</td>
                   <td className="py-2 pr-2">{item.proveedor}</td>
                   <td className="py-2 pr-2">{documentTypeLabels[item.tipoDocumento] ?? item.tipoDocumento}</td>
                   <td className="py-2 pr-2">{item.numeroDocumento}</td>
@@ -105,7 +96,7 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
           </table>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-4 sm:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
           <div>
             <p className="text-xs uppercase text-slate-500">Total rendido</p>
             <p className="mt-1 text-lg font-semibold text-slate-900">
@@ -113,15 +104,9 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
             </p>
           </div>
           <div>
-            <p className="text-xs uppercase text-slate-500">Saldo por rendir</p>
-            <p className="mt-1 text-lg font-semibold text-slate-900">
-              {formatCurrency(report.saldoPorRendir.toString())}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className="text-xs uppercase text-slate-500">Reembolso</p>
-            <p className={`mt-1 text-lg font-semibold ${report.esReembolso ? "text-amber-700" : "text-slate-400"}`}>
-              {report.esReembolso ? `Sí — ${formatCurrency(report.montoReembolso.toString())}` : "No corresponde"}
+            <p className="text-xs uppercase text-slate-500">Reembolso correspondiente</p>
+            <p className="mt-1 text-lg font-semibold text-[#004b93]">
+              {formatCurrency(report.montoReembolso.toString())}
             </p>
           </div>
         </div>
