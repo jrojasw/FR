@@ -7,7 +7,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { readAttachmentFile } from "@/lib/storage";
-import { getPaymentNoticeEmails } from "@/lib/roles";
+import { getPaymentNoticeEmails, getAdminEmail } from "@/lib/roles";
 import { reviewReportSchema } from "@/lib/validation";
 import { formatCurrency, formatDate } from "@/lib/format";
 
@@ -58,6 +58,18 @@ export async function reviewReportAction(
     `,
   });
 
+  if (parsed.data.decision === "APPROVED") {
+    await sendEmail({
+      to: getAdminEmail(),
+      subject: `Falta subir comprobante de pago - Rendición N° ${report.correlativo}`,
+      html: `
+        <p>La rendición N° ${report.correlativo} de ${report.nombre} (${formatCurrency(report.totalRendido.toString())}) fue aprobada.</p>
+        <p>Para cerrar el ciclo, sube el comprobante de la transferencia del banco como prueba de pago.</p>
+        <p><a href="${baseUrl}/aprobaciones/${reportId}">Subir comprobante de pago</a></p>
+      `,
+    });
+  }
+
   revalidatePath("/aprobaciones");
   redirect("/aprobaciones");
 }
@@ -104,6 +116,15 @@ export async function sendPaymentCertificateAction(
   await prisma.expenseReport.update({
     where: { id: reportId },
     data: { status: "PAID", paidAt: new Date(), paidById: session.sub },
+  });
+
+  await sendEmail({
+    to: report.user.email,
+    subject: `Tu rendición N° ${report.correlativo} fue pagada`,
+    html: `
+      <p>Tu rendición N° ${report.correlativo} (${formatCurrency(report.totalRendido.toString())}) ya fue pagada.</p>
+      <p><a href="${baseUrl}/rendiciones/${reportId}">Ver detalle</a></p>
+    `,
   });
 
   revalidatePath(`/aprobaciones/${reportId}`);
