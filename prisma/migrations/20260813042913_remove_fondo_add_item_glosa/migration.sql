@@ -9,7 +9,8 @@
 
 */
 -- AlterTable
-ALTER TABLE "ExpenseItem" ADD COLUMN     "glosa" TEXT NOT NULL;
+ALTER TABLE "ExpenseItem" ADD COLUMN     "glosa" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "ExpenseItem" ALTER COLUMN "glosa" DROP DEFAULT;
 
 -- AlterTable
 ALTER TABLE "ExpenseReport" DROP COLUMN "esReembolso",
