@@ -1,7 +1,4 @@
-import { Chewy } from "next/font/google";
 import { RequestOtpForm } from "@/components/RequestOtpForm";
-
-const chewy = Chewy({ weight: "400", subsets: ["latin"] });
 
 export default async function LoginPage({
   searchParams,
@@ -15,8 +12,8 @@ export default async function LoginPage({
       <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col items-center text-center">
           <span
-            className={`${chewy.className} font-normal text-slate-900`}
-            style={{ fontSize: "3.5rem", lineHeight: 1 }}
+            className="font-normal"
+            style={{ fontSize: "7rem", lineHeight: 1, color: "#333333", fontFamily: "'Times New Roman', Times, serif" }}
           >
             Elon
           </span>
