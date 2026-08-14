@@ -355,7 +355,6 @@ export function ReportEditor({
           <input
             value={rut}
             onChange={(e) => setRut(formatRut(e.target.value))}
-            inputMode="numeric"
             placeholder="12.345.678-9"
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
           />
