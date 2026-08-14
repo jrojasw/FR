@@ -22,10 +22,10 @@ let r2Client: S3Client | null = null;
  * desarrollo sin credenciales.
  */
 function getR2Client(): { client: S3Client; bucket: string } | null {
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  const bucket = process.env.R2_BUCKET_NAME;
+  const accountId = process.env.R2_ACCOUNT_ID?.trim();
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim();
+  const bucket = process.env.R2_BUCKET_NAME?.trim();
   if (!accountId || !accessKeyId || !secretAccessKey || !bucket) return null;
 
   if (!r2Client) {
