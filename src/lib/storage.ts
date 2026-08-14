@@ -33,6 +33,10 @@ function getR2Client(): { client: S3Client; bucket: string } | null {
       region: "auto",
       endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
       credentials: { accessKeyId, secretAccessKey },
+      // R2 requiere direccionamiento "path-style"; sin esto el SDK arma un
+      // subdominio con el nombre del bucket que no tiene certificado TLS
+      // válido y la conexión falla en el handshake.
+      forcePathStyle: true,
     });
   }
   return { client: r2Client, bucket };
