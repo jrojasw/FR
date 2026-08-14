@@ -26,12 +26,16 @@ function getR2Client(): { client: S3Client; bucket: string } | null {
   const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim();
   const bucket = process.env.R2_BUCKET_NAME?.trim();
-  if (!accountId || !accessKeyId || !secretAccessKey || !bucket) return null;
+  // Endpoint explícito (recomendado): se copia tal cual desde Cloudflare
+  // (bucket → Settings → S3 API). Si no se define, se arma a partir del
+  // Account ID asumiendo la jurisdicción por defecto.
+  const explicitEndpoint = process.env.R2_ENDPOINT?.trim();
+  if (!accessKeyId || !secretAccessKey || !bucket || (!accountId && !explicitEndpoint)) return null;
 
   if (!r2Client) {
     r2Client = new S3Client({
       region: "auto",
-      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+      endpoint: explicitEndpoint || `https://${accountId}.r2.cloudflarestorage.com`,
       credentials: { accessKeyId, secretAccessKey },
       // R2 requiere direccionamiento "path-style"; sin esto el SDK arma un
       // subdominio con el nombre del bucket que no tiene certificado TLS
