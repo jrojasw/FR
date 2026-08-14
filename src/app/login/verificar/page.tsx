@@ -14,7 +14,7 @@ export default async function VerifyOtpPage({
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
         <BrandHeader />
         <h1 className="mt-3 text-xl font-semibold text-slate-900">Ingresa tu código</h1>

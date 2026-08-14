@@ -9,7 +9,7 @@ export default async function LoginPage({
   const { next } = await searchParams;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
         <BrandHeader />
         <h1 className="mt-3 text-center text-lg font-semibold text-slate-900">Sistema de rendición de fondos</h1>
