@@ -25,7 +25,7 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-Fondos a Rendir <onboarding@resend.dev>}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-jorge.rojas@copayapunos.cl}
       APPROVER_EMAIL: ${APPROVER_EMAIL:-williams.arce@copayapunos.cl}
-      PAYMENT_NOTICE_EMAILS: ${PAYMENT_NOTICE_EMAILS:-contabilidad@copayapunos.cl,andres.rojas@copayapunos.cl,williams.arce@copayapunos.cl}
+      PAYMENT_NOTICE_EMAILS: ${PAYMENT_NOTICE_EMAILS:-contabilidad@copayapunos.cl,andres.rojas@copayapunos.cl}
       APP_URL: ${APP_URL:-}
       R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}

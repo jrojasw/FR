@@ -3,6 +3,8 @@ import { requireRole } from "@/lib/auth";
 import { fetchRegistryReports, groupByDate, listReportYears } from "@/lib/registry";
 import { formatCurrency, reportStatusLabels } from "@/lib/format";
 import { EmailRegistryForm } from "@/components/EmailRegistryForm";
+import { DeleteReportForm } from "@/components/DeleteReportForm";
+import { deleteReportAsAdminAction } from "./actions";
 import type { ReportStatus } from "@/generated/prisma/enums";
 
 const MESES = [
@@ -116,6 +118,7 @@ export default async function AdminRegistroPage({
                           <th className="px-4 py-2">Estado</th>
                           <th className="px-4 py-2">Adjuntos</th>
                           <th className="px-4 py-2" />
+                          <th className="px-4 py-2" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -131,6 +134,13 @@ export default async function AdminRegistroPage({
                               <Link href={`/aprobaciones/${report.id}`} className="text-sm font-medium text-slate-700 hover:text-slate-900">
                                 Ver →
                               </Link>
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              <DeleteReportForm
+                                reportId={report.id}
+                                correlativo={report.correlativo}
+                                action={deleteReportAsAdminAction}
+                              />
                             </td>
                           </tr>
                         ))}

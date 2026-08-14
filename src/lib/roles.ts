@@ -4,7 +4,7 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "jorge.rojas@copayapunos.cl").to
 const APPROVER_EMAIL = (process.env.APPROVER_EMAIL || "williams.arce@copayapunos.cl").toLowerCase();
 const PAYMENT_NOTICE_EMAILS = (
   process.env.PAYMENT_NOTICE_EMAILS ||
-  "contabilidad@copayapunos.cl,andres.rojas@copayapunos.cl,williams.arce@copayapunos.cl"
+  "contabilidad@copayapunos.cl,andres.rojas@copayapunos.cl"
 )
   .split(",")
   .map((email) => email.trim())

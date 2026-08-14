@@ -1,7 +1,10 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
+import { prisma } from "@/lib/prisma";
+import { deleteAttachmentFile } from "@/lib/storage";
 import { fetchRegistryReports } from "@/lib/registry";
 import { buildExportRows, buildXlsxBuffer } from "@/lib/export";
 import type { ReportStatus } from "@/generated/prisma/enums";
@@ -39,4 +42,25 @@ export async function sendRegistryEmailAction(
   });
 
   return { success: true };
+}
+
+export async function deleteReportAsAdminAction(formData: FormData) {
+  await requireRole("ADMIN");
+
+  const reportId = String(formData.get("reportId") ?? "");
+  if (!reportId) return;
+
+  const report = await prisma.expenseReport.findUnique({
+    where: { id: reportId },
+    include: { attachments: { select: { filePath: true } } },
+  });
+  if (!report) return;
+
+  const filePaths = report.attachments.map((a) => a.filePath);
+  if (report.paymentCertificatePath) filePaths.push(report.paymentCertificatePath);
+  await Promise.all(filePaths.map((filePath) => deleteAttachmentFile(filePath)));
+
+  await prisma.expenseReport.delete({ where: { id: reportId } });
+
+  revalidatePath("/admin/registro");
 }
