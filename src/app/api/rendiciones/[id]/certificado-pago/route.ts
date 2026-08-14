@@ -36,7 +36,18 @@ export async function POST(
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const relativePath = await saveAttachmentFile(reportId, file.name, buffer);
+
+  let relativePath: string;
+  try {
+    relativePath = await saveAttachmentFile(reportId, file.name, buffer);
+  } catch (error) {
+    console.error("Error guardando certificado de pago en el almacenamiento:", error);
+    const message = error instanceof Error ? error.message : "Error desconocido";
+    return NextResponse.json(
+      { error: `No se pudo guardar el archivo en el almacenamiento (${message})` },
+      { status: 502 }
+    );
+  }
 
   await prisma.expenseReport.update({
     where: { id: reportId },
