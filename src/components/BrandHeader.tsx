@@ -3,7 +3,12 @@ export function BrandHeader() {
     <div className="mx-auto flex w-fit flex-col items-end">
       <span
         className="font-normal"
-        style={{ fontSize: "7rem", lineHeight: 1, color: "#555555", fontFamily: "'Times New Roman', Times, serif" }}
+        style={{
+          fontSize: "clamp(2.75rem, 14vw, 7rem)",
+          lineHeight: 1,
+          color: "#555555",
+          fontFamily: "'Times New Roman', Times, serif",
+        }}
       >
         Elon
       </span>
