@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
-import { getApproverEmail } from "@/lib/roles";
+import { getApproverEmail, getAdminEmail } from "@/lib/roles";
 import { formatCurrency, formatDate, documentTypeLabels } from "@/lib/format";
 import { computeTotals } from "@/lib/reports";
 import { isValidRut, formatRut } from "@/lib/rut";
@@ -141,7 +141,7 @@ export async function finalizeReportAction(
     .join("");
 
   await sendEmail({
-    to: getApproverEmail(),
+    to: [getApproverEmail(), getAdminEmail()],
     subject: `Nueva rendición N° ${report.correlativo} de ${nombre}`,
     html: `
       <p>${nombre} (${cargo}) envió una rendición de fondos para tu revisión.</p>
