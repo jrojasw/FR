@@ -166,7 +166,80 @@ export function ReportEditor({
 
       <section ref={detalleRef} className="scroll-mt-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-900">Detalle de documentos</h2>
-        <div className="mt-4 overflow-x-auto">
+
+        {/* Vista móvil: tarjetas con los campos de a dos, sin scroll horizontal */}
+        <div className="mt-4 flex flex-col gap-3 sm:hidden">
+          {items.map((row, index) => (
+            <div key={index} className="rounded-lg border border-slate-200 p-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs uppercase text-slate-500">Glosa</label>
+                  <input
+                    value={row.glosa}
+                    onChange={(e) => updateItem(index, { glosa: e.target.value })}
+                    placeholder="Ej: materiales"
+                    className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs uppercase text-slate-500">Proveedor</label>
+                  <input
+                    value={row.proveedor}
+                    onChange={(e) => updateItem(index, { proveedor: e.target.value })}
+                    className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs uppercase text-slate-500">Tipo documento</label>
+                  <select
+                    value={row.tipoDocumento}
+                    onChange={(e) => updateItem(index, { tipoDocumento: e.target.value as ItemRow["tipoDocumento"] })}
+                    className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  >
+                    {Object.entries(documentTypeLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs uppercase text-slate-500">N° documento</label>
+                  <input
+                    value={row.numeroDocumento}
+                    onChange={(e) => updateItem(index, { numeroDocumento: e.target.value })}
+                    className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs uppercase text-slate-500">Monto total</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={row.montoTotal}
+                    onChange={(e) => updateItem(index, { montoTotal: e.target.value })}
+                    className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+                {items.length > 1 && (
+                  <div className="flex items-end justify-end">
+                    <button
+                      type="button"
+                      onClick={() => removeItem(index)}
+                      className="text-sm text-red-600 hover:text-red-800"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Vista escritorio/tablet: tabla */}
+        <div className="mt-4 hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="text-xs uppercase text-slate-500">
               <tr>

@@ -20,6 +20,7 @@ export function AttachmentUploader({
   const [attachments, setAttachments] = useState<Attachment[]>(initialAttachments);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<Attachment | null>(null);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -131,19 +132,26 @@ export function AttachmentUploader({
         <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {attachments.map((a) => (
             <li key={a.id} className="relative overflow-hidden rounded-md border border-slate-200 bg-white">
-              {a.kind === "PHOTO" ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={`/api/adjuntos/${a.id}`}
-                  alt={a.fileName}
-                  className="h-24 w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-24 w-full flex-col items-center justify-center gap-1 bg-slate-50 px-2 text-center">
-                  <span className="text-2xl">📄</span>
-                  <span className="line-clamp-1 text-xs text-slate-600">{a.fileName}</span>
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={() => setPreview(a)}
+                className="block w-full"
+                aria-label={`Ver ${a.fileName}`}
+              >
+                {a.kind === "PHOTO" ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`/api/adjuntos/${a.id}`}
+                    alt={a.fileName}
+                    className="h-24 w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-24 w-full flex-col items-center justify-center gap-1 bg-slate-50 px-2 text-center">
+                    <span className="text-2xl">📄</span>
+                    <span className="line-clamp-1 text-xs text-slate-600">{a.fileName}</span>
+                  </div>
+                )}
+              </button>
               <button
                 type="button"
                 onClick={() => handleDelete(a.id)}
@@ -155,6 +163,56 @@ export function AttachmentUploader({
             </li>
           ))}
         </ul>
+      )}
+
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setPreview(null)}
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
+              <span className="truncate text-sm font-medium text-slate-700">{preview.fileName}</span>
+              <button
+                type="button"
+                onClick={() => setPreview(null)}
+                className="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto bg-slate-50">
+              {preview.kind === "PHOTO" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/api/adjuntos/${preview.id}`}
+                  alt={preview.fileName}
+                  className="mx-auto max-h-[80vh] w-auto object-contain"
+                />
+              ) : preview.mimeType === "application/pdf" ? (
+                <iframe src={`/api/adjuntos/${preview.id}`} title={preview.fileName} className="h-[80vh] w-full" />
+              ) : (
+                <div className="flex h-64 flex-col items-center justify-center gap-3 px-4 text-center">
+                  <p className="text-sm text-slate-600">
+                    Este tipo de archivo no se puede previsualizar aquí.
+                  </p>
+                  <a
+                    href={`/api/adjuntos/${preview.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Abrir en una pestaña nueva
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
