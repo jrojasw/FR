@@ -7,9 +7,10 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { readAttachmentFile } from "@/lib/storage";
-import { getPaymentNoticeEmails, getAdminEmail } from "@/lib/roles";
+import { getPaymentNoticeEmails, getAdminEmail, getApproverEmail } from "@/lib/roles";
 import { reviewReportSchema } from "@/lib/validation";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { buildReportDocx } from "@/lib/docx-export";
 
 export type ReviewState = {
   error?: string;
@@ -85,7 +86,7 @@ export async function sendPaymentCertificateAction(
 
   const report = await prisma.expenseReport.findFirst({
     where: { id: reportId, status: "APPROVED" },
-    include: { user: true },
+    include: { user: true, items: true, attachments: true },
   });
   if (!report) return { error: "Rendición no encontrada o no está aprobada." };
   if (!report.paymentCertificatePath) {
@@ -113,9 +114,11 @@ export async function sendPaymentCertificateAction(
     ],
   });
 
+  const paidAt = new Date();
+
   await prisma.expenseReport.update({
     where: { id: reportId },
-    data: { status: "PAID", paidAt: new Date(), paidById: session.sub },
+    data: { status: "PAID", paidAt, paidById: session.sub },
   });
 
   await sendEmail({
@@ -126,6 +129,23 @@ export async function sendPaymentCertificateAction(
       <p><a href="${baseUrl}/rendiciones/${reportId}">Ver detalle</a></p>
     `,
   });
+
+  try {
+    const docxBuffer = await buildReportDocx({ ...report, paidAt });
+    await sendEmail({
+      to: getApproverEmail(),
+      subject: `Expediente en Word - Rendición N° ${report.correlativo} - ${report.nombre}`,
+      html: `
+        <p>Se adjunta en Word el expediente completo de la rendición N° ${report.correlativo} de ${report.nombre} (${report.cargo}), con firma y los documentos adjuntos, para imprimir y guardar en carpeta física.</p>
+        <p><a href="${baseUrl}/aprobaciones/${reportId}">Ver rendición</a></p>
+      `,
+      attachments: [
+        { filename: `rendicion-${report.correlativo}.docx`, content: docxBuffer },
+      ],
+    });
+  } catch (error) {
+    console.error("Error generando/enviando el expediente en Word:", error);
+  }
 
   revalidatePath(`/aprobaciones/${reportId}`);
   redirect(`/aprobaciones/${reportId}`);
