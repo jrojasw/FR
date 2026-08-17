@@ -10,7 +10,7 @@ import { readAttachmentFile } from "@/lib/storage";
 import { getPaymentNoticeEmails, getAdminEmail, getApproverEmail } from "@/lib/roles";
 import { reviewReportSchema } from "@/lib/validation";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { buildReportDocx } from "@/lib/docx-export";
+import { buildReportPdf } from "@/lib/pdf-export";
 
 export type ReviewState = {
   error?: string;
@@ -131,20 +131,20 @@ export async function sendPaymentCertificateAction(
   });
 
   try {
-    const docxBuffer = await buildReportDocx({ ...report, paidAt });
+    const pdfBuffer = await buildReportPdf({ ...report, paidAt });
     await sendEmail({
       to: getApproverEmail(),
-      subject: `Expediente en Word - Rendición N° ${report.correlativo} - ${report.nombre}`,
+      subject: `Expediente en PDF - Rendición N° ${report.correlativo} - ${report.nombre}`,
       html: `
-        <p>Se adjunta en Word el expediente completo de la rendición N° ${report.correlativo} de ${report.nombre} (${report.cargo}), con firma y los documentos adjuntos, para imprimir y guardar en carpeta física.</p>
+        <p>Se adjunta en PDF el expediente completo de la rendición N° ${report.correlativo} de ${report.nombre} (${report.cargo}), con firma y los documentos adjuntos, para imprimir y guardar en carpeta física.</p>
         <p><a href="${baseUrl}/aprobaciones/${reportId}">Ver rendición</a></p>
       `,
       attachments: [
-        { filename: `rendicion-${report.correlativo}.docx`, content: docxBuffer },
+        { filename: `rendicion-${report.correlativo}.pdf`, content: pdfBuffer },
       ],
     });
   } catch (error) {
-    console.error("Error generando/enviando el expediente en Word:", error);
+    console.error("Error generando/enviando el expediente en PDF:", error);
   }
 
   revalidatePath(`/aprobaciones/${reportId}`);

@@ -84,10 +84,10 @@ con un registro exportable a Excel/CSV de todas las rendiciones.
   el comprobante de la transferencia del banco (PDF o imagen) y presiona
   "Enviar certificado y marcar como pagada" — esto envía el comprobante por
   correo a `PAYMENT_NOTICE_EMAILS`, avisa al solicitante que fue pagada, le
-  envía al Aprobador (`APPROVER_EMAIL`) el expediente completo en un
-  documento Word (datos, detalle, firma y adjuntos) para imprimir y
-  archivar en físico, y cambia el estado a **Pagada**, cerrando el ciclo.
-  También tiene acceso a
+  envía al Aprobador (`APPROVER_EMAIL`) el expediente completo en PDF (no
+  editable: datos, detalle, firma y adjuntos) para imprimir y archivar en
+  físico, y cambia el estado a **Pagada**, cerrando el ciclo. También tiene
+  acceso a
   `/admin/registro`, un registro de todas las rendiciones agrupado por
   usuario, año, mes y día, exportable a Excel (`.xlsx`) o CSV, y con
   opción de enviarlo por correo.
