@@ -38,6 +38,7 @@ export default async function RendicionDetailPage({
               correlativo={report.correlativo}
               initial={{
                 nombre: report.nombre,
+                apellido: report.apellido,
                 cargo: report.cargo,
                 fecha: toDateInputValue(report.fecha),
               }}

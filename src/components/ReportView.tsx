@@ -13,11 +13,16 @@ export type ReportViewData = {
   id: string;
   correlativo: number;
   nombre: string;
+  apellido: string;
   cargo: string;
   fecha: Date;
   totalRendido: Decimalish;
   montoReembolso: Decimalish;
   rut: string | null;
+  esParaOtraPersona: boolean;
+  beneficiarioNombre: string | null;
+  beneficiarioApellido: string | null;
+  beneficiarioRut: string | null;
   signatureData: string | null;
   status: string;
   submittedAt: Date | null;
@@ -56,7 +61,9 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
         <dl className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-slate-500">Nombre</dt>
-            <dd className="font-medium text-slate-900">{report.nombre}</dd>
+            <dd className="font-medium text-slate-900">
+              {report.nombre} {report.apellido}
+            </dd>
           </div>
           <div>
             <dt className="text-slate-500">Cargo</dt>
@@ -67,6 +74,15 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
             <dd className="font-medium text-slate-900">{formatDate(report.fecha)}</dd>
           </div>
         </dl>
+
+        {report.esParaOtraPersona && (
+          <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3">
+            <p className="text-xs uppercase text-slate-500">A nombre de</p>
+            <p className="mt-1 text-sm font-medium text-slate-900">
+              {report.beneficiarioNombre} {report.beneficiarioApellido}
+            </p>
+          </div>
+        )}
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -151,9 +167,15 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
             <p className="text-sm text-slate-500">Sin firma.</p>
           )}
           <div className="text-sm">
-            <p className="text-slate-500">RUT</p>
+            <p className="text-slate-500">{report.esParaOtraPersona ? "RUT (quien rinde)" : "RUT"}</p>
             <p className="font-medium text-slate-900">{report.rut ?? "—"}</p>
           </div>
+          {report.esParaOtraPersona && (
+            <div className="text-sm">
+              <p className="text-slate-500">RUT de {report.beneficiarioNombre}</p>
+              <p className="font-medium text-slate-900">{report.beneficiarioRut ?? "—"}</p>
+            </div>
+          )}
         </div>
       </section>
 

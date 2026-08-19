@@ -33,6 +33,7 @@ export function ReportEditor({
   correlativo: number;
   initial: {
     nombre: string;
+    apellido: string;
     cargo: string;
     fecha: string;
   };
@@ -40,8 +41,13 @@ export function ReportEditor({
 }) {
   const router = useRouter();
   const [nombre, setNombre] = useState(initial.nombre);
+  const [apellido, setApellido] = useState(initial.apellido);
   const [cargo, setCargo] = useState(initial.cargo);
   const [fecha, setFecha] = useState(initial.fecha);
+  const [esParaOtraPersona, setEsParaOtraPersona] = useState(false);
+  const [beneficiarioNombre, setBeneficiarioNombre] = useState("");
+  const [beneficiarioApellido, setBeneficiarioApellido] = useState("");
+  const [beneficiarioRut, setBeneficiarioRut] = useState("");
   const [items, setItems] = useState<ItemRow[]>([emptyRow()]);
   const [rut, setRut] = useState("");
   const [signatureData, setSignatureData] = useState("");
@@ -78,8 +84,12 @@ export function ReportEditor({
   function handleSubmit() {
     setError(null);
 
-    if (!nombre.trim() || !cargo.trim() || !fecha) {
-      failWith("Completa todos los datos del encabezado.", encabezadoRef);
+    if (!nombre.trim() || !apellido.trim() || !cargo.trim() || !fecha) {
+      failWith("Completa todos los datos del encabezado (nombre y apellido son obligatorios).", encabezadoRef);
+      return;
+    }
+    if (esParaOtraPersona && (!beneficiarioNombre.trim() || !beneficiarioApellido.trim())) {
+      failWith("Ingresa el nombre y apellido de la persona a nombre de quien se rinde.", encabezadoRef);
       return;
     }
     const validItems = items.filter(
@@ -97,13 +107,22 @@ export function ReportEditor({
       failWith("Ingresa tu RUT.", firmaRef);
       return;
     }
+    if (esParaOtraPersona && !beneficiarioRut.trim()) {
+      failWith("Ingresa el RUT de la persona a nombre de quien se rinde.", firmaRef);
+      return;
+    }
 
     const formData = new FormData();
     formData.set("nombre", nombre.trim());
+    formData.set("apellido", apellido.trim());
     formData.set("cargo", cargo.trim());
     formData.set("fecha", fecha);
+    formData.set("esParaOtraPersona", esParaOtraPersona ? "true" : "false");
+    formData.set("beneficiarioNombre", beneficiarioNombre.trim());
+    formData.set("beneficiarioApellido", beneficiarioApellido.trim());
     formData.set("items", JSON.stringify(validItems.map((i) => ({ ...i, montoTotal: Number(i.montoTotal) }))));
     formData.set("rut", rut.trim());
+    formData.set("beneficiarioRut", beneficiarioRut.trim());
     formData.set("signatureData", signatureData);
 
     startTransition(async () => {
@@ -135,26 +154,71 @@ export function ReportEditor({
             N° {correlativo}
           </span>
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm font-medium text-slate-700">
+            ¿Esta rendición es a nombre de otra persona?
+          </p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setEsParaOtraPersona(false)}
+              className={`rounded-md border px-4 py-1.5 text-sm font-medium ${
+                !esParaOtraPersona
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              No
+            </button>
+            <button
+              type="button"
+              onClick={() => setEsParaOtraPersona(true)}
+              className={`rounded-md border px-4 py-1.5 text-sm font-medium ${
+                esParaOtraPersona
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              Sí
+            </button>
+          </div>
+        </div>
+
+        <p className="mt-4 text-xs font-medium uppercase tracking-wide text-slate-500">
+          {esParaOtraPersona ? "Datos de quien ingresa la rendición" : "Tus datos"}
+        </p>
+        <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-slate-700">Nombre</label>
+            <label htmlFor="nombre" className="block text-sm font-medium text-slate-700">Nombre</label>
             <input
+              id="nombre"
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Cargo</label>
+            <label htmlFor="apellido" className="block text-sm font-medium text-slate-700">Apellido</label>
             <input
+              id="apellido"
+              value={apellido}
+              onChange={(e) => setApellido(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label htmlFor="cargo" className="block text-sm font-medium text-slate-700">Cargo</label>
+            <input
+              id="cargo"
               value={cargo}
               onChange={(e) => setCargo(e.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Fecha</label>
+            <label htmlFor="fecha" className="block text-sm font-medium text-slate-700">Fecha</label>
             <input
+              id="fecha"
               type="date"
               value={fecha}
               onChange={(e) => setFecha(e.target.value)}
@@ -162,6 +226,34 @@ export function ReportEditor({
             />
           </div>
         </div>
+
+        {esParaOtraPersona && (
+          <>
+            <p className="mt-5 text-xs font-medium uppercase tracking-wide text-slate-500">
+              Datos de la persona a nombre de quien se rinde
+            </p>
+            <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="beneficiarioNombre" className="block text-sm font-medium text-slate-700">Nombre</label>
+                <input
+                  id="beneficiarioNombre"
+                  value={beneficiarioNombre}
+                  onChange={(e) => setBeneficiarioNombre(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label htmlFor="beneficiarioApellido" className="block text-sm font-medium text-slate-700">Apellido</label>
+                <input
+                  id="beneficiarioApellido"
+                  value={beneficiarioApellido}
+                  onChange={(e) => setBeneficiarioApellido(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          </>
+        )}
       </section>
 
       <section ref={detalleRef} className="scroll-mt-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -350,14 +442,33 @@ export function ReportEditor({
         <div className="mt-4 max-w-xl">
           <SignaturePad onChange={setSignatureData} />
         </div>
-        <div className="mt-4 max-w-xs">
-          <label className="block text-sm font-medium text-slate-700">RUT</label>
-          <input
-            value={rut}
-            onChange={(e) => setRut(formatRut(e.target.value))}
-            placeholder="12.345.678-9"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
-          />
+        <div className="mt-4 flex flex-wrap gap-4">
+          <div className="max-w-xs">
+            <label htmlFor="rut" className="block text-sm font-medium text-slate-700">
+              {esParaOtraPersona ? "Tu RUT (quien rinde)" : "RUT"}
+            </label>
+            <input
+              id="rut"
+              value={rut}
+              onChange={(e) => setRut(formatRut(e.target.value))}
+              placeholder="12.345.678-9"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+            />
+          </div>
+          {esParaOtraPersona && (
+            <div className="max-w-xs">
+              <label htmlFor="beneficiarioRut" className="block text-sm font-medium text-slate-700">
+                RUT de {beneficiarioNombre.trim() || "la persona"}
+              </label>
+              <input
+                id="beneficiarioRut"
+                value={beneficiarioRut}
+                onChange={(e) => setBeneficiarioRut(formatRut(e.target.value))}
+                placeholder="12.345.678-9"
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+              />
+            </div>
+          )}
         </div>
       </section>
 

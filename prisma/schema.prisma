@@ -71,9 +71,10 @@ model ExpenseReport {
   id          String @id @default(cuid())
   correlativo Int    @unique @default(autoincrement())
 
-  nombre String
-  cargo  String
-  fecha  DateTime
+  nombre   String
+  apellido String
+  cargo    String
+  fecha    DateTime
 
   // Totales calculados al enviar (se guardan como respaldo del registro).
   // El reembolso corresponde siempre al total rendido (suma de los documentos).
@@ -82,6 +83,13 @@ model ExpenseReport {
 
   rut           String?
   signatureData String? @db.Text
+
+  // Si la rendición se hace a nombre de otra persona (no de quien la ingresa),
+  // se guardan también los datos de esa persona.
+  esParaOtraPersona    Boolean @default(false)
+  beneficiarioNombre   String?
+  beneficiarioApellido String?
+  beneficiarioRut      String?
 
   status        ReportStatus @default(DRAFT)
   createdAt     DateTime     @default(now())

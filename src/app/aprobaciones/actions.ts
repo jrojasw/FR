@@ -64,7 +64,7 @@ export async function reviewReportAction(
       to: getAdminEmail(),
       subject: `Falta subir comprobante de pago - Rendición N° ${report.correlativo}`,
       html: `
-        <p>La rendición N° ${report.correlativo} de ${report.nombre} (${formatCurrency(report.totalRendido.toString())}) fue aprobada.</p>
+        <p>La rendición N° ${report.correlativo} de ${report.nombre} ${report.apellido} (${formatCurrency(report.totalRendido.toString())}) fue aprobada.</p>
         <p>Para cerrar el ciclo, sube el comprobante de la transferencia del banco como prueba de pago.</p>
         <p><a href="${baseUrl}/aprobaciones/${reportId}">Subir comprobante de pago</a></p>
       `,
@@ -100,9 +100,9 @@ export async function sendPaymentCertificateAction(
 
   await sendEmail({
     to: getPaymentNoticeEmails(),
-    subject: `Certificado de pago - Rendición N° ${report.correlativo} - ${report.nombre}`,
+    subject: `Certificado de pago - Rendición N° ${report.correlativo} - ${report.nombre} ${report.apellido}`,
     html: `
-      <p>Se adjunta el certificado de pago del banco para la rendición N° ${report.correlativo} de ${report.nombre} (${report.cargo}).</p>
+      <p>Se adjunta el certificado de pago del banco para la rendición N° ${report.correlativo} de ${report.nombre} ${report.apellido} (${report.cargo}).</p>
       <ul>
         <li>Fecha rendición: ${formatDate(report.fecha)}</li>
         <li>Total rendido / Reembolso correspondiente: ${formatCurrency(report.totalRendido.toString())}</li>
@@ -134,9 +134,9 @@ export async function sendPaymentCertificateAction(
     const pdfBuffer = await buildReportPdf({ ...report, paidAt });
     await sendEmail({
       to: getApproverEmail(),
-      subject: `Expediente en PDF - Rendición N° ${report.correlativo} - ${report.nombre}`,
+      subject: `Expediente en PDF - Rendición N° ${report.correlativo} - ${report.nombre} ${report.apellido}`,
       html: `
-        <p>Se adjunta en PDF el expediente completo de la rendición N° ${report.correlativo} de ${report.nombre} (${report.cargo}), con firma y los documentos adjuntos, para imprimir y guardar en carpeta física.</p>
+        <p>Se adjunta en PDF el expediente completo de la rendición N° ${report.correlativo} de ${report.nombre} ${report.apellido} (${report.cargo}), con firma y los documentos adjuntos, para imprimir y guardar en carpeta física.</p>
         <p><a href="${baseUrl}/aprobaciones/${reportId}">Ver rendición</a></p>
       `,
       attachments: [

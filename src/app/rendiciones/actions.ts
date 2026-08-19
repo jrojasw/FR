@@ -23,6 +23,7 @@ export async function createDraftReportAction() {
   const report = await prisma.expenseReport.create({
     data: {
       nombre: user.name ?? "",
+      apellido: "",
       cargo: user.cargo ?? "",
       fecha: new Date(),
       userId: session.sub,
@@ -60,8 +61,12 @@ export async function finalizeReportAction(
 
   const headerParsed = createReportSchema.safeParse({
     nombre: formData.get("nombre"),
+    apellido: formData.get("apellido"),
     cargo: formData.get("cargo"),
     fecha: formData.get("fecha"),
+    esParaOtraPersona: formData.get("esParaOtraPersona"),
+    beneficiarioNombre: formData.get("beneficiarioNombre"),
+    beneficiarioApellido: formData.get("beneficiarioApellido"),
   });
   if (!headerParsed.success) {
     return { error: headerParsed.error.issues[0]?.message ?? "Revisa el encabezado." };
@@ -81,6 +86,7 @@ export async function finalizeReportAction(
   const finalizeParsed = finalizeReportSchema.safeParse({
     rut: formData.get("rut"),
     signatureData: formData.get("signatureData"),
+    beneficiarioRut: formData.get("beneficiarioRut"),
   });
   if (!finalizeParsed.success) {
     return { error: finalizeParsed.error.issues[0]?.message ?? "Falta firmar o ingresar el RUT." };
@@ -89,12 +95,18 @@ export async function finalizeReportAction(
     return { error: "El RUT ingresado no es válido." };
   }
 
+  const { nombre, apellido, cargo, fecha, esParaOtraPersona, beneficiarioNombre, beneficiarioApellido } =
+    headerParsed.data;
+
+  if (esParaOtraPersona && !isValidRut(finalizeParsed.data.beneficiarioRut)) {
+    return { error: "El RUT de la persona a nombre de quien se rinde no es válido." };
+  }
+
   const attachmentCount = await prisma.attachment.count({ where: { reportId } });
   if (attachmentCount === 0) {
     return { error: "Adjunta al menos un comprobante." };
   }
 
-  const { nombre, cargo, fecha } = headerParsed.data;
   const { items } = itemsParsed.data;
   const totals = computeTotals(items);
 
@@ -114,19 +126,24 @@ export async function finalizeReportAction(
       where: { id: reportId },
       data: {
         nombre,
+        apellido,
         cargo,
         fecha: new Date(fecha),
         totalRendido: totals.totalRendido,
         montoReembolso: totals.montoReembolso,
         rut: formatRut(finalizeParsed.data.rut),
         signatureData: finalizeParsed.data.signatureData,
+        esParaOtraPersona,
+        beneficiarioNombre: esParaOtraPersona ? beneficiarioNombre : null,
+        beneficiarioApellido: esParaOtraPersona ? beneficiarioApellido : null,
+        beneficiarioRut: esParaOtraPersona ? formatRut(finalizeParsed.data.beneficiarioRut) : null,
         status: "SUBMITTED",
         submittedAt: new Date(),
       },
     }),
     prisma.user.update({
       where: { id: session.sub },
-      data: { name: nombre, cargo },
+      data: { name: `${nombre} ${apellido}`.trim(), cargo },
     }),
   ]);
 
@@ -140,14 +157,20 @@ export async function finalizeReportAction(
     )
     .join("");
 
+  const nombreCompleto = `${nombre} ${apellido}`.trim();
+  const porTercero = esParaOtraPersona
+    ? `<li>A nombre de: ${beneficiarioNombre} ${beneficiarioApellido}</li>`
+    : "";
+
   await sendEmail({
     to: [getApproverEmail(), getAdminEmail()],
-    subject: `Nueva rendición N° ${report.correlativo} de ${nombre}`,
+    subject: `Nueva rendición N° ${report.correlativo} de ${nombreCompleto}`,
     html: `
-      <p>${nombre} (${cargo}) envió una rendición de fondos para tu revisión.</p>
+      <p>${nombreCompleto} (${cargo}) envió una rendición de fondos para tu revisión${esParaOtraPersona ? ` a nombre de ${beneficiarioNombre} ${beneficiarioApellido}` : ""}.</p>
       <ul>
         <li>Correlativo: N° ${report.correlativo}</li>
         <li>Fecha: ${formatDate(new Date(fecha))}</li>
+        ${porTercero}
       </ul>
       <p>Documentos:</p>
       <ul>${itemsHtml}</ul>

@@ -32,7 +32,13 @@ export default async function AprobacionesPage() {
               <tr key={report.id}>
                 <td className="px-4 py-3 font-medium text-slate-900">{report.correlativo}</td>
                 <td className="px-4 py-3 text-slate-600">
-                  {report.nombre} <span className="text-slate-400">· {report.user.email}</span>
+                  {report.nombre} {report.apellido}{" "}
+                  {report.esParaOtraPersona ? (
+                    <span className="text-slate-400">
+                      (a nombre de {report.beneficiarioNombre} {report.beneficiarioApellido})
+                    </span>
+                  ) : null}{" "}
+                  <span className="text-slate-400">· {report.user.email}</span>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{formatDate(report.fecha)}</td>
                 <td className="px-4 py-3 text-slate-600">{formatCurrency(report.totalRendido.toString())}</td>

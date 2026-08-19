@@ -9,11 +9,27 @@ export const verifyOtpSchema = z.object({
   code: z.string().trim().regex(/^\d{4}$/, "El código debe tener 4 dígitos"),
 });
 
-export const createReportSchema = z.object({
-  nombre: z.string().trim().min(2, "Nombre muy corto"),
-  cargo: z.string().trim().min(2, "Cargo muy corto"),
-  fecha: z.string().min(1, "Fecha requerida"),
-});
+export const createReportSchema = z
+  .object({
+    nombre: z.string().trim().min(2, "Nombre muy corto"),
+    apellido: z.string().trim().min(2, "Apellido muy corto"),
+    cargo: z.string().trim().min(2, "Cargo muy corto"),
+    fecha: z.string().min(1, "Fecha requerida"),
+    esParaOtraPersona: z
+      .enum(["true", "false"])
+      .transform((v) => v === "true"),
+    beneficiarioNombre: z.string().trim().optional().default(""),
+    beneficiarioApellido: z.string().trim().optional().default(""),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.esParaOtraPersona) return;
+    if (data.beneficiarioNombre.length < 2) {
+      ctx.addIssue({ code: "custom", path: ["beneficiarioNombre"], message: "Nombre de la persona muy corto" });
+    }
+    if (data.beneficiarioApellido.length < 2) {
+      ctx.addIssue({ code: "custom", path: ["beneficiarioApellido"], message: "Apellido de la persona muy corto" });
+    }
+  });
 
 export const itemRowSchema = z.object({
   glosa: z.string().trim().min(2, "Ingresa una glosa (ej: materiales, alimentación)"),
@@ -30,6 +46,7 @@ export const saveItemsSchema = z.object({
 export const finalizeReportSchema = z.object({
   rut: z.string().trim().min(3, "RUT requerido"),
   signatureData: z.string().min(1, "Falta la firma"),
+  beneficiarioRut: z.string().trim().optional().default(""),
 });
 
 export const reviewReportSchema = z.object({

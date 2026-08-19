@@ -10,9 +10,14 @@ const SIGNATURE_WIDTH_PX = 260;
 type ReportForPdf = {
   correlativo: number;
   nombre: string;
+  apellido: string;
   cargo: string;
   fecha: Date;
   rut: string | null;
+  esParaOtraPersona: boolean;
+  beneficiarioNombre: string | null;
+  beneficiarioApellido: string | null;
+  beneficiarioRut: string | null;
   signatureData: string | null;
   totalRendido: { toString(): string };
   montoReembolso: { toString(): string };
@@ -149,12 +154,27 @@ export async function buildReportPdf(report: ReportForPdf): Promise<Buffer> {
       { header: "Valor", width: CONTENT_WIDTH_PX - 130 },
     ],
     [
-      ["Nombre", report.nombre],
+      ["Nombre", `${report.nombre} ${report.apellido}`],
       ["Cargo", report.cargo],
       ["Fecha", formatDate(report.fecha)],
-      ["RUT", report.rut ?? "—"],
+      [report.esParaOtraPersona ? "RUT (quien rinde)" : "RUT", report.rut ?? "—"],
     ]
   );
+
+  if (report.esParaOtraPersona) {
+    sectionHeading(doc, "Datos de la persona a nombre de quien se rinde");
+    drawTable(
+      doc,
+      [
+        { header: "Campo", width: 130 },
+        { header: "Valor", width: CONTENT_WIDTH_PX - 130 },
+      ],
+      [
+        ["Nombre", `${report.beneficiarioNombre ?? ""} ${report.beneficiarioApellido ?? ""}`],
+        ["RUT", report.beneficiarioRut ?? "—"],
+      ]
+    );
+  }
 
   sectionHeading(doc, "Detalle de documentos");
   const colWidths = [110, 110, 85, 85, 105];
