@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { reportStatusLabels } from "@/lib/format";
+import { createDraftReportAction } from "@/app/rendiciones/actions";
 
 export default async function HomePage() {
   const session = await requireUser();
@@ -34,9 +35,17 @@ export default async function HomePage() {
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3">
+        <form action={createDraftReportAction}>
+          <button
+            type="submit"
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+          >
+            + Nueva rendición
+          </button>
+        </form>
         <Link
           href="/rendiciones"
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
         >
           Mis rendiciones
         </Link>
