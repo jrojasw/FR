@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { MAX_ATTACHMENTS } from "@/lib/reports";
+import { DocumentScanner } from "@/components/DocumentScanner";
 
 type Attachment = {
   id: string;
@@ -26,7 +27,7 @@ export function AttachmentUploader({
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFiles(files: FileList | null) {
+  async function handleFiles(files: FileList | File[] | null) {
     if (!files || files.length === 0) return;
     setError(null);
 
@@ -120,6 +121,7 @@ export function AttachmentUploader({
         >
           📄 Subir documento
         </button>
+        <DocumentScanner onScanned={(file) => handleFiles([file])} />
       </div>
 
       <p className="mt-2 text-xs text-slate-500">

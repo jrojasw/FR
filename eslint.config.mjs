@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored OpenCV.js build (not our code, not meant to be linted).
+    "public/opencv/**",
   ]),
 ]);
 
