@@ -131,9 +131,9 @@ export async function sendPaymentCertificateAction(
   });
 
   try {
-    const pdfBuffer = await buildReportPdf({ ...report, paidAt });
+    const pdfBuffer = await buildReportPdf({ ...report, status: "PAID", paidAt });
     await sendEmail({
-      to: getApproverEmail(),
+      to: [getApproverEmail(), getAdminEmail()],
       subject: `Expediente en PDF - Rendición N° ${report.correlativo} - ${report.nombre} ${report.apellido}`,
       html: `
         <p>Se adjunta en PDF el expediente completo de la rendición N° ${report.correlativo} de ${report.nombre} ${report.apellido} (${report.cargo}), con firma y los documentos adjuntos, para imprimir y guardar en carpeta física.</p>

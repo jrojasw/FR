@@ -1,14 +1,19 @@
 import "server-only";
+import path from "node:path";
+import { readFile } from "node:fs/promises";
 import PDFDocument from "pdfkit";
 import sharp from "sharp";
 import { readAttachmentFile } from "@/lib/storage";
-import { formatCurrency, formatDate, documentTypeLabels } from "@/lib/format";
+import { formatCurrency, formatDate, documentTypeLabels, reportStatusLabels } from "@/lib/format";
 
 const CONTENT_WIDTH_PX = 495; // A4 usable width at 50pt margins (595.28 - 2*50)
 const SIGNATURE_WIDTH_PX = 260;
+const LOGO_WIDTH_PX = 90;
+const LOGO_PATH = path.join(process.cwd(), "src/assets/logo-cpynos.jpg");
 
 type ReportForPdf = {
   correlativo: number;
+  status: string;
   nombre: string;
   apellido: string;
   cargo: string;
@@ -139,12 +144,38 @@ export async function buildReportPdf(report: ReportForPdf): Promise<Buffer> {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
   });
 
-  doc.font("Helvetica-Bold").fontSize(20).fillColor("#1f2937").text(`Rendición de Fondos N° ${report.correlativo}`);
+  let logoWidth = 0;
+  let logoHeight = 0;
+  try {
+    const logoBuffer = await readFile(LOGO_PATH);
+    const embeddableLogo = await toEmbeddableJpeg(logoBuffer, LOGO_WIDTH_PX);
+    if (embeddableLogo) {
+      logoWidth = embeddableLogo.width;
+      logoHeight = (embeddableLogo.height / embeddableLogo.width) * LOGO_WIDTH_PX;
+      doc.image(embeddableLogo.data, doc.page.width - doc.page.margins.right - logoWidth, doc.page.margins.top, {
+        width: logoWidth,
+      });
+    }
+  } catch {
+    // Sin logo disponible: se omite, el resto del documento sigue igual.
+  }
+
+  resetX(doc);
+  doc.font("Helvetica-Bold").fontSize(20).fillColor("#1f2937").text(`Rendición de Fondos N° ${report.correlativo}`, {
+    width: CONTENT_WIDTH_PX - logoWidth - 10,
+  });
   doc
     .font("Helvetica-Oblique")
     .fontSize(11)
     .fillColor("#475569")
-    .text(`Pagada${report.paidAt ? ` — ${formatDate(report.paidAt)}` : ""}`);
+    .text(
+      `${reportStatusLabels[report.status] ?? report.status}${report.paidAt ? ` — ${formatDate(report.paidAt)}` : ""}`,
+      { width: CONTENT_WIDTH_PX - logoWidth - 10 }
+    );
+  resetX(doc);
+  if (doc.y < doc.page.margins.top + logoHeight) {
+    doc.y = doc.page.margins.top + logoHeight;
+  }
 
   sectionHeading(doc, "Datos del solicitante");
   drawTable(
@@ -220,6 +251,9 @@ export async function buildReportPdf(report: ReportForPdf): Promise<Buffer> {
     doc.text("(Sin firma registrada)");
   }
 
+  // Los adjuntos siempre arrancan en una hoja nueva: la primera hoja queda
+  // completa con encabezado, detalle y firma, lista para archivar aparte.
+  doc.addPage();
   sectionHeading(doc, "Fotos y documentos adjuntos");
   if (report.attachments.length === 0) {
     doc.text("(Sin adjuntos)");

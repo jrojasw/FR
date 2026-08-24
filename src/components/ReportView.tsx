@@ -56,6 +56,14 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
             <span className={`rounded-full px-3 py-1 text-sm font-medium ${reportStatusStyles[report.status]}`}>
               {reportStatusLabels[report.status]}
             </span>
+            <a
+              href={`/api/rendiciones/${report.id}/pdf`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-full border border-slate-300 bg-white px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              📄 Descargar PDF
+            </a>
           </div>
         </div>
         <dl className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
