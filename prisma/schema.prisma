@@ -110,6 +110,10 @@ model ExpenseReport {
   paidBy                 User?     @relation("ReportPaidBy", fields: [paidById], references: [id])
   paidById               String?
 
+  // Último recordatorio automático de "falta subir comprobante de pago"
+  // enviado mientras la rendición sigue Aprobada sin certificado.
+  lastPaymentReminderAt DateTime?
+
   items       ExpenseItem[]
   attachments Attachment[]
 
