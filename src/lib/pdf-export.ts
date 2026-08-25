@@ -50,6 +50,10 @@ async function toEmbeddableJpeg(
     const resized = await sharp(buffer)
       .rotate()
       .resize({ width: maxWidthPx, withoutEnlargement: true })
+      // La firma (y cualquier PNG con transparencia) debe quedar sobre fondo
+      // blanco: sin esto, JPEG rellena lo transparente con negro y la firma
+      // sale "en negativo".
+      .flatten({ background: "#ffffff" })
       .jpeg({ quality: 82 })
       .toBuffer();
     const meta = await sharp(resized).metadata();
@@ -57,6 +61,21 @@ async function toEmbeddableJpeg(
   } catch {
     return null;
   }
+}
+
+const MIN_IMAGE_HEIGHT_PX = 200;
+const IMAGE_CAPTION_ALLOWANCE_PX = 28;
+
+// Ajusta a la caja disponible sin superar el tamaño natural: preferimos una
+// imagen más chica antes que forzar una hoja nueva casi en blanco.
+function fitWithinBox(
+  naturalWidth: number,
+  naturalHeight: number,
+  maxWidth: number,
+  maxHeight: number
+) {
+  const scale = Math.min(maxWidth / naturalWidth, maxHeight / naturalHeight, 1);
+  return { width: naturalWidth * scale, height: naturalHeight * scale };
 }
 
 function ensureSpace(doc: PDFKit.PDFDocument, heightNeeded: number) {
@@ -251,12 +270,13 @@ export async function buildReportPdf(report: ReportForPdf): Promise<Buffer> {
     doc.text("(Sin firma registrada)");
   }
 
-  // Los adjuntos siempre arrancan en una hoja nueva: la primera hoja queda
-  // completa con encabezado, detalle y firma, lista para archivar aparte.
-  doc.addPage();
-  sectionHeading(doc, "Fotos y documentos adjuntos");
-  if (report.attachments.length === 0) {
-    doc.text("(Sin adjuntos)");
+  // Los adjuntos arrancan en una hoja nueva (si hay alguno): la primera hoja
+  // queda completa con encabezado, detalle y firma, lista para archivar
+  // aparte. Si no hay adjuntos, no se agrega una hoja extra solo por el
+  // título, para no gastar papel de más al imprimir.
+  if (report.attachments.length > 0) {
+    doc.addPage();
+    sectionHeading(doc, "Fotos y documentos adjuntos");
   }
 
   for (const attachment of report.attachments) {
@@ -268,10 +288,18 @@ export async function buildReportPdf(report: ReportForPdf): Promise<Buffer> {
         const buffer = await readAttachmentFile(attachment.filePath);
         const embeddable = await toEmbeddableJpeg(buffer, CONTENT_WIDTH_PX);
         if (embeddable) {
-          const scaledHeight = (embeddable.height / embeddable.width) * CONTENT_WIDTH_PX;
-          ensureSpace(doc, scaledHeight + 24);
-          doc.image(embeddable.data, doc.page.margins.left, doc.y, { width: CONTENT_WIDTH_PX });
-          doc.y += scaledHeight + 4;
+          const bottom = doc.page.height - doc.page.margins.bottom;
+          let availableHeight = bottom - doc.y - IMAGE_CAPTION_ALLOWANCE_PX;
+          // Si queda muy poco espacio en la hoja actual, recién ahí se pasa
+          // de hoja; si no, la imagen se ajusta para caber sin dejar una
+          // hoja casi en blanco.
+          if (availableHeight < MIN_IMAGE_HEIGHT_PX) {
+            doc.addPage();
+            availableHeight = bottom - doc.y - IMAGE_CAPTION_ALLOWANCE_PX;
+          }
+          const box = fitWithinBox(embeddable.width, embeddable.height, CONTENT_WIDTH_PX, availableHeight);
+          doc.image(embeddable.data, doc.page.margins.left, doc.y, { width: box.width, height: box.height });
+          doc.y += box.height + 4;
           resetX(doc);
           doc.font("Helvetica-Oblique").fontSize(8).fillColor("#64748b").text(attachment.fileName);
           doc.font("Helvetica").fontSize(10).fillColor("#000000");
