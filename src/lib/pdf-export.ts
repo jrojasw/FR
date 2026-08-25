@@ -323,11 +323,20 @@ export async function buildReportPdf(report: ReportForPdf): Promise<Buffer> {
     }
   }
 
-  ensureSpace(doc, 30);
-  doc.moveDown(1);
+  // Nota de pie: solo se agrega si entra en el espacio que ya queda en la
+  // hoja actual. Nunca vale la pena una hoja nueva completa solo por esta
+  // línea, así que si no cabe, se omite en vez de gastar papel de más.
   resetX(doc);
   doc.font("Helvetica-Oblique").fontSize(8).fillColor("#94a3b8");
-  doc.text(`Generado automáticamente por Elon el ${formatDate(new Date())}.`);
+  const footerText = `Generado automáticamente por Elon el ${formatDate(new Date())}.`;
+  const footerBottom = doc.page.height - doc.page.margins.bottom;
+  const footerY = Math.min(doc.y + 8, footerBottom - 10);
+  const footerHeight = doc.heightOfString(footerText, { width: CONTENT_WIDTH_PX });
+  if (footerY + footerHeight <= footerBottom) {
+    doc.y = footerY;
+    resetX(doc);
+    doc.text(footerText, { width: CONTENT_WIDTH_PX });
+  }
 
   doc.end();
   return done;
