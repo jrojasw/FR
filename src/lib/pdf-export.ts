@@ -2,6 +2,7 @@ import "server-only";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 import PDFDocument from "pdfkit";
+import { PDFDocument as PdfLibDocument } from "pdf-lib";
 import sharp from "sharp";
 import { readAttachmentFile } from "@/lib/storage";
 import { formatCurrency, formatDate, documentTypeLabels, reportStatusLabels } from "@/lib/format";
@@ -279,9 +280,12 @@ export async function buildReportPdf(report: ReportForPdf): Promise<Buffer> {
     sectionHeading(doc, "Fotos y documentos adjuntos");
   }
 
+  const pdfAttachmentsToAppend: { fileName: string; bytes: Buffer }[] = [];
+
   for (const attachment of report.attachments) {
     const isImage = attachment.kind === "PHOTO" || attachment.mimeType.startsWith("image/");
-    let embedded = false;
+    const isPdf = attachment.mimeType === "application/pdf";
+    let handled = false;
 
     if (isImage) {
       try {
@@ -305,20 +309,34 @@ export async function buildReportPdf(report: ReportForPdf): Promise<Buffer> {
           doc.font("Helvetica").fontSize(10).fillColor("#000000");
           resetX(doc);
           doc.moveDown(0.6);
-          embedded = true;
+          handled = true;
         }
       } catch {
-        embedded = false;
+        handled = false;
+      }
+    } else if (isPdf) {
+      // Los documentos subidos como PDF (facturas digitales, etc.) no son
+      // fotos, pero sí se pueden fusionar página a página al final del
+      // expediente para que también queden impresos.
+      try {
+        const buffer = await readAttachmentFile(attachment.filePath);
+        pdfAttachmentsToAppend.push({ fileName: attachment.fileName, bytes: buffer });
+        ensureSpace(doc, 20);
+        resetX(doc);
+        doc.text(`- ${attachment.fileName} (documento PDF adjunto, se agrega completo a continuación)`);
+        handled = true;
+      } catch {
+        handled = false;
       }
     }
 
-    if (!embedded) {
+    if (!handled) {
       ensureSpace(doc, 20);
       resetX(doc);
       doc.text(
         isImage
           ? `- ${attachment.fileName} (no se pudo incluir la imagen; disponible en el sistema)`
-          : `- ${attachment.fileName} (documento adjunto, disponible en el sistema)`
+          : `- ${attachment.fileName} (documento adjunto — no se pudo incrustar en este PDF; ábrelo por separado en el sistema)`
       );
     }
   }
@@ -339,5 +357,26 @@ export async function buildReportPdf(report: ReportForPdf): Promise<Buffer> {
   }
 
   doc.end();
-  return done;
+  const baseBuffer = await done;
+
+  if (pdfAttachmentsToAppend.length === 0) {
+    return baseBuffer;
+  }
+
+  try {
+    const merged = await PdfLibDocument.load(baseBuffer);
+    for (const att of pdfAttachmentsToAppend) {
+      try {
+        const attachedDoc = await PdfLibDocument.load(att.bytes, { ignoreEncryption: true });
+        const copiedPages = await merged.copyPages(attachedDoc, attachedDoc.getPageIndices());
+        for (const page of copiedPages) merged.addPage(page);
+      } catch (error) {
+        console.error(`No se pudo fusionar el PDF adjunto "${att.fileName}" al expediente:`, error);
+      }
+    }
+    return Buffer.from(await merged.save());
+  } catch (error) {
+    console.error("No se pudieron fusionar los PDF adjuntos al expediente:", error);
+    return baseBuffer;
+  }
 }
