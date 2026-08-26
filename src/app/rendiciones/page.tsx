@@ -26,7 +26,44 @@ export default async function RendicionesPage() {
         </form>
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+      {/* Vista móvil: tarjetas, sin scroll horizontal */}
+      <div className="mt-6 flex flex-col gap-3 sm:hidden">
+        {reports.map((report) => (
+          <Link
+            key={report.id}
+            href={`/rendiciones/${report.id}`}
+            className="block rounded-lg border border-slate-200 bg-white p-4 shadow-sm active:bg-slate-50"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-base font-semibold text-slate-900">N° {report.correlativo}</span>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${reportStatusStyles[report.status]}`}>
+                {reportStatusLabels[report.status]}
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs uppercase text-slate-500">Fecha</p>
+                <p className="text-slate-700">{formatDate(report.fecha)}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase text-slate-500">Total rendido</p>
+                <p className="text-slate-700">{formatCurrency(report.totalRendido.toString())}</p>
+              </div>
+            </div>
+            <p className="mt-3 text-sm font-medium text-slate-700">
+              {report.status === "DRAFT" ? "Continuar →" : "Ver →"}
+            </p>
+          </Link>
+        ))}
+        {reports.length === 0 && (
+          <p className="rounded-lg border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 shadow-sm">
+            Aún no tienes rendiciones. Crea la primera con &ldquo;Nueva rendición&rdquo;.
+          </p>
+        )}
+      </div>
+
+      {/* Vista escritorio/tablet: tabla */}
+      <div className="mt-6 hidden overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm sm:block">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase text-slate-500">
             <tr>

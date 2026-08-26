@@ -104,48 +104,92 @@ export default async function AdminRegistroPage({
                   {MESES[Number(m) - 1]}
                 </h3>
                 {Array.from(days.entries()).map(([d, dayReports]) => (
-                  <div key={d} className="mt-2 ml-2 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+                  <div key={d} className="mt-2 ml-2 rounded-lg border border-slate-200 bg-white shadow-sm">
                     <p className="border-b border-slate-100 px-4 py-2 text-xs font-medium text-slate-500">
                       Día {d}
                     </p>
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                        <tr>
-                          <th className="px-4 py-2">N°</th>
-                          <th className="px-4 py-2">Usuario</th>
-                          <th className="px-4 py-2">N° documentos</th>
-                          <th className="px-4 py-2">Total rendido</th>
-                          <th className="px-4 py-2">Estado</th>
-                          <th className="px-4 py-2">Adjuntos</th>
-                          <th className="px-4 py-2" />
-                          <th className="px-4 py-2" />
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {dayReports.map((report) => (
-                          <tr key={report.id}>
-                            <td className="px-4 py-2 font-medium text-slate-900">{report.correlativo}</td>
-                            <td className="px-4 py-2 text-slate-600">{report.user.name ?? report.user.email}</td>
-                            <td className="px-4 py-2 text-slate-600">{report.items.length}</td>
-                            <td className="px-4 py-2 text-slate-600">{formatCurrency(report.totalRendido.toString())}</td>
-                            <td className="px-4 py-2 text-slate-600">{reportStatusLabels[report.status]}</td>
-                            <td className="px-4 py-2 text-slate-600">{report.attachments.length}</td>
-                            <td className="px-4 py-2 text-right">
-                              <Link href={`/aprobaciones/${report.id}`} className="text-sm font-medium text-slate-700 hover:text-slate-900">
-                                Ver →
-                              </Link>
-                            </td>
-                            <td className="px-4 py-2 text-right">
-                              <DeleteReportForm
-                                reportId={report.id}
-                                correlativo={report.correlativo}
-                                action={deleteReportAsAdminAction}
-                              />
-                            </td>
+
+                    {/* Vista móvil: tarjetas, sin scroll horizontal */}
+                    <div className="flex flex-col gap-3 p-3 sm:hidden">
+                      {dayReports.map((report) => (
+                        <div key={report.id} className="rounded-lg border border-slate-200 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold text-slate-900">N° {report.correlativo}</span>
+                            <span className="text-xs text-slate-500">{reportStatusLabels[report.status]}</span>
+                          </div>
+                          <p className="mt-1 text-sm text-slate-600">{report.user.name ?? report.user.email}</p>
+                          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                              <p className="text-xs uppercase text-slate-500">N° documentos</p>
+                              <p className="text-slate-700">{report.items.length}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase text-slate-500">Total rendido</p>
+                              <p className="text-slate-700">{formatCurrency(report.totalRendido.toString())}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase text-slate-500">Adjuntos</p>
+                              <p className="text-slate-700">{report.attachments.length}</p>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex items-center justify-between">
+                            <Link
+                              href={`/aprobaciones/${report.id}`}
+                              className="text-sm font-medium text-slate-700 hover:text-slate-900"
+                            >
+                              Ver →
+                            </Link>
+                            <DeleteReportForm
+                              reportId={report.id}
+                              correlativo={report.correlativo}
+                              action={deleteReportAsAdminAction}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Vista escritorio/tablet: tabla */}
+                    <div className="hidden overflow-x-auto sm:block">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                          <tr>
+                            <th className="px-4 py-2">N°</th>
+                            <th className="px-4 py-2">Usuario</th>
+                            <th className="px-4 py-2">N° documentos</th>
+                            <th className="px-4 py-2">Total rendido</th>
+                            <th className="px-4 py-2">Estado</th>
+                            <th className="px-4 py-2">Adjuntos</th>
+                            <th className="px-4 py-2" />
+                            <th className="px-4 py-2" />
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {dayReports.map((report) => (
+                            <tr key={report.id}>
+                              <td className="px-4 py-2 font-medium text-slate-900">{report.correlativo}</td>
+                              <td className="px-4 py-2 text-slate-600">{report.user.name ?? report.user.email}</td>
+                              <td className="px-4 py-2 text-slate-600">{report.items.length}</td>
+                              <td className="px-4 py-2 text-slate-600">{formatCurrency(report.totalRendido.toString())}</td>
+                              <td className="px-4 py-2 text-slate-600">{reportStatusLabels[report.status]}</td>
+                              <td className="px-4 py-2 text-slate-600">{report.attachments.length}</td>
+                              <td className="px-4 py-2 text-right">
+                                <Link href={`/aprobaciones/${report.id}`} className="text-sm font-medium text-slate-700 hover:text-slate-900">
+                                  Ver →
+                                </Link>
+                              </td>
+                              <td className="px-4 py-2 text-right">
+                                <DeleteReportForm
+                                  reportId={report.id}
+                                  correlativo={report.correlativo}
+                                  action={deleteReportAsAdminAction}
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 ))}
               </div>
