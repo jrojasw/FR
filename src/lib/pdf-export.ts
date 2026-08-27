@@ -24,6 +24,7 @@ type ReportForPdf = {
   beneficiarioNombre: string | null;
   beneficiarioApellido: string | null;
   beneficiarioRut: string | null;
+  beneficiarioEmail: string | null;
   signatureData: string | null;
   totalRendido: { toString(): string };
   montoReembolso: { toString(): string };
@@ -223,6 +224,7 @@ export async function buildReportPdf(report: ReportForPdf): Promise<Buffer> {
       [
         ["Nombre", `${report.beneficiarioNombre ?? ""} ${report.beneficiarioApellido ?? ""}`],
         ["RUT", report.beneficiarioRut ?? "—"],
+        ...(report.beneficiarioEmail ? [["Correo", report.beneficiarioEmail]] : []),
       ]
     );
   }

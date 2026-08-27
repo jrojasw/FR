@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MAX_ATTACHMENTS } from "@/lib/reports";
 import { DocumentScanner } from "@/components/DocumentScanner";
+import { createMobileUploadLinkAction } from "@/app/rendiciones/actions";
 
 type Attachment = {
   id: string;
@@ -23,9 +24,61 @@ export function AttachmentUploader({
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<Attachment | null>(null);
 
+  const [mobileLink, setMobileLink] = useState<{ url: string; qrDataUrl: string } | null>(null);
+  const [mobileLinkLoading, setMobileLinkLoading] = useState(false);
+  const [mobileLinkError, setMobileLinkError] = useState<string | null>(null);
+  const [mobileSyncNotice, setMobileSyncNotice] = useState<string | null>(null);
+
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
+  const attachmentsRef = useRef(attachments);
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
+  async function openMobileLink() {
+    setMobileLinkError(null);
+    setMobileLinkLoading(true);
+    try {
+      const result = await createMobileUploadLinkAction(reportId);
+      if (result.error || !result.url || !result.qrDataUrl) {
+        setMobileLinkError(result.error ?? "No se pudo generar el enlace.");
+        return;
+      }
+      setMobileLink({ url: result.url, qrDataUrl: result.qrDataUrl });
+    } catch {
+      setMobileLinkError("No se pudo generar el enlace.");
+    } finally {
+      setMobileLinkLoading(false);
+    }
+  }
+
+  // Mientras el QR está abierto, se revisa cada pocos segundos si llegaron
+  // fotos nuevas desde el celular, para no tener que recargar la página.
+  useEffect(() => {
+    if (!mobileLink) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/rendiciones/${reportId}/adjuntos`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const fresh: Attachment[] = data.attachments ?? [];
+        if (fresh.length > attachmentsRef.current.length) {
+          const added = fresh.length - attachmentsRef.current.length;
+          setAttachments(fresh);
+          setMobileSyncNotice(
+            added === 1 ? "Llegó 1 foto nueva desde tu celular." : `Llegaron ${added} fotos nuevas desde tu celular.`
+          );
+        }
+      } catch {
+        // Se reintenta en el próximo intervalo; un fallo puntual no importa.
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [mobileLink, reportId]);
 
   async function handleFiles(files: FileList | File[] | null) {
     if (!files || files.length === 0) return;
@@ -122,7 +175,18 @@ export function AttachmentUploader({
           📄 Subir documento
         </button>
         <DocumentScanner onScanned={(file) => handleFiles([file])} />
+        <button
+          type="button"
+          disabled={mobileLinkLoading}
+          onClick={openMobileLink}
+          className="hidden rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 md:inline-flex md:items-center md:gap-1"
+        >
+          📱 {mobileLinkLoading ? "Generando enlace…" : "Usar el celular"}
+        </button>
       </div>
+
+      {mobileLinkError ? <p className="mt-1 text-sm text-red-600">{mobileLinkError}</p> : null}
+      {mobileSyncNotice ? <p className="mt-1 text-sm text-emerald-600">{mobileSyncNotice}</p> : null}
 
       <p className="mt-2 text-xs text-slate-500">
         {attachments.length}/{MAX_ATTACHMENTS} adjuntos {uploading ? "· subiendo…" : ""}
@@ -165,6 +229,39 @@ export function AttachmentUploader({
             </li>
           ))}
         </ul>
+      )}
+
+      {mobileLink && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setMobileLink(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-lg bg-white p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold text-slate-900">Escanea con tu celular</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Abre la cámara de tu celular y apunta al código. Vas a poder tomar fotos ahí y siguen
+              apareciendo aquí, sin perder lo que ya llenaste en el computador.
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={mobileLink.qrDataUrl}
+              alt="Código QR para abrir esta rendición en el celular"
+              className="mx-auto mt-4 h-56 w-56"
+            />
+            <p className="mt-3 break-all text-xs text-slate-400">{mobileLink.url}</p>
+            <p className="mt-2 text-xs text-slate-500">Válido por 10 minutos.</p>
+            <button
+              type="button"
+              onClick={() => setMobileLink(null)}
+              className="mt-4 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+            >
+              Listo
+            </button>
+          </div>
+        </div>
       )}
 
       {preview && (

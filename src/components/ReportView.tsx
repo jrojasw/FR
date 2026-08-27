@@ -23,6 +23,7 @@ export type ReportViewData = {
   beneficiarioNombre: string | null;
   beneficiarioApellido: string | null;
   beneficiarioRut: string | null;
+  beneficiarioEmail: string | null;
   signatureData: string | null;
   status: string;
   submittedAt: Date | null;
@@ -89,6 +90,9 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
             <p className="mt-1 text-sm font-medium text-slate-900">
               {report.beneficiarioNombre} {report.beneficiarioApellido}
             </p>
+            {report.beneficiarioEmail ? (
+              <p className="text-sm text-slate-600">{report.beneficiarioEmail}</p>
+            ) : null}
           </div>
         )}
       </section>

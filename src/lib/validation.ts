@@ -20,6 +20,7 @@ export const createReportSchema = z
       .transform((v) => v === "true"),
     beneficiarioNombre: z.string().trim().optional().default(""),
     beneficiarioApellido: z.string().trim().optional().default(""),
+    beneficiarioEmail: z.string().trim().optional().default(""),
   })
   .superRefine((data, ctx) => {
     if (!data.esParaOtraPersona) return;
@@ -28,6 +29,9 @@ export const createReportSchema = z
     }
     if (data.beneficiarioApellido.length < 2) {
       ctx.addIssue({ code: "custom", path: ["beneficiarioApellido"], message: "Apellido de la persona muy corto" });
+    }
+    if (data.beneficiarioEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.beneficiarioEmail)) {
+      ctx.addIssue({ code: "custom", path: ["beneficiarioEmail"], message: "El correo de la persona no es válido" });
     }
   });
 

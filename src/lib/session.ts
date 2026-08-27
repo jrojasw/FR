@@ -15,12 +15,12 @@ function secretKey() {
   return new TextEncoder().encode(secret);
 }
 
-export async function signSession(payload: SessionPayload): Promise<string> {
+export async function signSession(payload: SessionPayload, expiresIn: string = "7d"): Promise<string> {
   return new SignJWT({ role: payload.role, name: payload.name })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(payload.sub)
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime(expiresIn)
     .sign(secretKey());
 }
 

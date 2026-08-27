@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import QRCode from "qrcode";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
@@ -9,6 +10,7 @@ import { getApproverEmail, getAdminEmail } from "@/lib/roles";
 import { formatCurrency, formatDate, documentTypeLabels } from "@/lib/format";
 import { computeTotals } from "@/lib/reports";
 import { isValidRut, formatRut } from "@/lib/rut";
+import { createUploadTicket } from "@/lib/mobile-handoff";
 import {
   createReportSchema,
   saveItemsSchema,
@@ -43,6 +45,35 @@ export async function deleteDraftReportAction(reportId: string) {
   redirect("/rendiciones");
 }
 
+export type MobileUploadLinkState = {
+  error?: string;
+  url?: string;
+  qrDataUrl?: string;
+  expiresInMinutes?: number;
+};
+
+// Genera un enlace de un solo uso (10 min) para que la persona pueda abrir
+// esta rendición en su celular —escaneando el QR— y usar la cámara ahí,
+// mientras sigue con el resto del formulario en el computador.
+export async function createMobileUploadLinkAction(reportId: string): Promise<MobileUploadLinkState> {
+  const session = await requireUser();
+
+  const report = await prisma.expenseReport.findFirst({
+    where: { id: reportId, userId: session.sub, status: "DRAFT" },
+  });
+  if (!report) return { error: "Rendición no encontrada." };
+
+  const ticket = await createUploadTicket(session.sub, reportId);
+
+  const h = await headers();
+  const baseUrl = process.env.APP_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
+  const url = `${baseUrl}/celular/${ticket}`;
+
+  const qrDataUrl = await QRCode.toDataURL(url, { width: 320, margin: 1 });
+
+  return { url, qrDataUrl, expiresInMinutes: 10 };
+}
+
 export type FinalizeReportState = {
   error?: string;
 };
@@ -67,6 +98,7 @@ export async function finalizeReportAction(
     esParaOtraPersona: formData.get("esParaOtraPersona"),
     beneficiarioNombre: formData.get("beneficiarioNombre"),
     beneficiarioApellido: formData.get("beneficiarioApellido"),
+    beneficiarioEmail: formData.get("beneficiarioEmail"),
   });
   if (!headerParsed.success) {
     return { error: headerParsed.error.issues[0]?.message ?? "Revisa el encabezado." };
@@ -95,8 +127,16 @@ export async function finalizeReportAction(
     return { error: "El RUT ingresado no es válido." };
   }
 
-  const { nombre, apellido, cargo, fecha, esParaOtraPersona, beneficiarioNombre, beneficiarioApellido } =
-    headerParsed.data;
+  const {
+    nombre,
+    apellido,
+    cargo,
+    fecha,
+    esParaOtraPersona,
+    beneficiarioNombre,
+    beneficiarioApellido,
+    beneficiarioEmail,
+  } = headerParsed.data;
 
   if (esParaOtraPersona && !isValidRut(finalizeParsed.data.beneficiarioRut)) {
     return { error: "El RUT de la persona a nombre de quien se rinde no es válido." };
@@ -137,6 +177,7 @@ export async function finalizeReportAction(
         beneficiarioNombre: esParaOtraPersona ? beneficiarioNombre : null,
         beneficiarioApellido: esParaOtraPersona ? beneficiarioApellido : null,
         beneficiarioRut: esParaOtraPersona ? formatRut(finalizeParsed.data.beneficiarioRut) : null,
+        beneficiarioEmail: esParaOtraPersona && beneficiarioEmail ? beneficiarioEmail : null,
         status: "SUBMITTED",
         submittedAt: new Date(),
       },

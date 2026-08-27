@@ -13,6 +13,29 @@ const ALLOWED_DOC_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 
+export async function GET(
+  _request: NextRequest,
+  ctx: RouteContext<"/api/rendiciones/[id]/adjuntos">
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const { id: reportId } = await ctx.params;
+
+  const report = await prisma.expenseReport.findFirst({
+    where: { id: reportId, userId: session.sub },
+  });
+  if (!report) return NextResponse.json({ error: "Rendición no encontrada" }, { status: 404 });
+
+  const attachments = await prisma.attachment.findMany({
+    where: { reportId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, fileName: true, mimeType: true, kind: true },
+  });
+
+  return NextResponse.json({ attachments });
+}
+
 export async function POST(
   request: NextRequest,
   ctx: RouteContext<"/api/rendiciones/[id]/adjuntos">

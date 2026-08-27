@@ -7,6 +7,14 @@ const PUBLIC_PATHS = new Set(["/login", "/login/verificar"]);
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // El QR de "usar el celular" lleva a un ticket de un solo propósito que
+  // valida su propia autorización (ver src/app/celular/[ticket]/route.ts) y
+  // debe funcionar sin sesión previa en ese navegador — pasa siempre de
+  // largo, sin los redirects normales de login/rol de abajo.
+  if (pathname.startsWith("/celular/")) {
+    return NextResponse.next();
+  }
+
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = token ? await verifySession(token) : null;
 

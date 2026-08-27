@@ -47,6 +47,7 @@ export function ReportEditor({
   const [esParaOtraPersona, setEsParaOtraPersona] = useState(false);
   const [beneficiarioNombre, setBeneficiarioNombre] = useState("");
   const [beneficiarioApellido, setBeneficiarioApellido] = useState("");
+  const [beneficiarioEmail, setBeneficiarioEmail] = useState("");
   const [beneficiarioRut, setBeneficiarioRut] = useState("");
   const [items, setItems] = useState<ItemRow[]>([emptyRow()]);
   const [rut, setRut] = useState("");
@@ -120,6 +121,7 @@ export function ReportEditor({
     formData.set("esParaOtraPersona", esParaOtraPersona ? "true" : "false");
     formData.set("beneficiarioNombre", beneficiarioNombre.trim());
     formData.set("beneficiarioApellido", beneficiarioApellido.trim());
+    formData.set("beneficiarioEmail", beneficiarioEmail.trim());
     formData.set("items", JSON.stringify(validItems.map((i) => ({ ...i, montoTotal: Number(i.montoTotal) }))));
     formData.set("rut", rut.trim());
     formData.set("beneficiarioRut", beneficiarioRut.trim());
@@ -248,6 +250,19 @@ export function ReportEditor({
                   id="beneficiarioApellido"
                   value={beneficiarioApellido}
                   onChange={(e) => setBeneficiarioApellido(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="beneficiarioEmail" className="block text-sm font-medium text-slate-700">
+                  Correo electrónico <span className="font-normal text-slate-400">(opcional)</span>
+                </label>
+                <input
+                  id="beneficiarioEmail"
+                  type="email"
+                  value={beneficiarioEmail}
+                  onChange={(e) => setBeneficiarioEmail(e.target.value)}
+                  placeholder="nombre@empresa.cl"
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
                 />
               </div>

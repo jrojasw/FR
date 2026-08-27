@@ -90,6 +90,7 @@ model ExpenseReport {
   beneficiarioNombre   String?
   beneficiarioApellido String?
   beneficiarioRut      String?
+  beneficiarioEmail    String?
 
   status        ReportStatus @default(DRAFT)
   createdAt     DateTime     @default(now())

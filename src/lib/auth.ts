@@ -4,15 +4,16 @@ import { redirect } from "next/navigation";
 import { signSession, verifySession, SESSION_COOKIE_NAME, type SessionPayload } from "./session";
 import type { Role } from "@/generated/prisma/enums";
 
-export async function createSession(payload: SessionPayload) {
-  const token = await signSession(payload);
+export async function createSession(payload: SessionPayload, maxAgeSeconds: number = 60 * 60 * 24 * 7) {
+  const expiresIn = `${maxAgeSeconds}s`;
+  const token = await signSession(payload, expiresIn);
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: maxAgeSeconds,
   });
 }
 
