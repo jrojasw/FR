@@ -9,10 +9,12 @@ export const verifyOtpSchema = z.object({
   code: z.string().trim().regex(/^\d{4}$/, "El código debe tener 4 dígitos"),
 });
 
+const NO_SPACES_MESSAGE = "No puede tener espacios: usa el campo Apellido para el resto del nombre";
+
 export const createReportSchema = z
   .object({
-    nombre: z.string().trim().min(2, "Nombre muy corto"),
-    apellido: z.string().trim().min(2, "Apellido muy corto"),
+    nombre: z.string().trim().min(2, "Nombre muy corto").regex(/^\S+$/, NO_SPACES_MESSAGE),
+    apellido: z.string().trim().min(2, "Apellido muy corto").regex(/^\S+$/, NO_SPACES_MESSAGE),
     cargo: z.string().trim().min(2, "Cargo muy corto"),
     fecha: z.string().min(1, "Fecha requerida"),
     esParaOtraPersona: z
@@ -26,9 +28,13 @@ export const createReportSchema = z
     if (!data.esParaOtraPersona) return;
     if (data.beneficiarioNombre.length < 2) {
       ctx.addIssue({ code: "custom", path: ["beneficiarioNombre"], message: "Nombre de la persona muy corto" });
+    } else if (!/^\S+$/.test(data.beneficiarioNombre)) {
+      ctx.addIssue({ code: "custom", path: ["beneficiarioNombre"], message: NO_SPACES_MESSAGE });
     }
     if (data.beneficiarioApellido.length < 2) {
       ctx.addIssue({ code: "custom", path: ["beneficiarioApellido"], message: "Apellido de la persona muy corto" });
+    } else if (!/^\S+$/.test(data.beneficiarioApellido)) {
+      ctx.addIssue({ code: "custom", path: ["beneficiarioApellido"], message: NO_SPACES_MESSAGE });
     }
     if (data.beneficiarioEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.beneficiarioEmail)) {
       ctx.addIssue({ code: "custom", path: ["beneficiarioEmail"], message: "El correo de la persona no es válido" });

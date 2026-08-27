@@ -23,6 +23,12 @@ function emptyRow(): ItemRow {
   return { glosa: "", proveedor: "", tipoDocumento: "BOLETA", numeroDocumento: "", montoTotal: "" };
 }
 
+// Nombre/apellido van en campos separados y no aceptan espacios, para que
+// nadie escriba el nombre completo en un solo campo.
+function stripSpaces(value: string) {
+  return value.replace(/\s/g, "");
+}
+
 export function ReportEditor({
   reportId,
   correlativo,
@@ -47,7 +53,8 @@ export function ReportEditor({
   const [esParaOtraPersona, setEsParaOtraPersona] = useState(false);
   const [beneficiarioNombre, setBeneficiarioNombre] = useState("");
   const [beneficiarioApellido, setBeneficiarioApellido] = useState("");
-  const [beneficiarioEmail, setBeneficiarioEmail] = useState("");
+  const [beneficiarioEmailUsuario, setBeneficiarioEmailUsuario] = useState("");
+  const [beneficiarioEmailProveedor, setBeneficiarioEmailProveedor] = useState("");
   const [beneficiarioRut, setBeneficiarioRut] = useState("");
   const [items, setItems] = useState<ItemRow[]>([emptyRow()]);
   const [rut, setRut] = useState("");
@@ -113,6 +120,11 @@ export function ReportEditor({
       return;
     }
 
+    const beneficiarioEmail =
+      beneficiarioEmailUsuario.trim() && beneficiarioEmailProveedor.trim()
+        ? `${beneficiarioEmailUsuario.trim()}@${beneficiarioEmailProveedor.trim()}`
+        : "";
+
     const formData = new FormData();
     formData.set("nombre", nombre.trim());
     formData.set("apellido", apellido.trim());
@@ -121,7 +133,7 @@ export function ReportEditor({
     formData.set("esParaOtraPersona", esParaOtraPersona ? "true" : "false");
     formData.set("beneficiarioNombre", beneficiarioNombre.trim());
     formData.set("beneficiarioApellido", beneficiarioApellido.trim());
-    formData.set("beneficiarioEmail", beneficiarioEmail.trim());
+    formData.set("beneficiarioEmail", beneficiarioEmail);
     formData.set("items", JSON.stringify(validItems.map((i) => ({ ...i, montoTotal: Number(i.montoTotal) }))));
     formData.set("rut", rut.trim());
     formData.set("beneficiarioRut", beneficiarioRut.trim());
@@ -195,7 +207,8 @@ export function ReportEditor({
             <input
               id="nombre"
               value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
+              onChange={(e) => setNombre(stripSpaces(e.target.value))}
+              placeholder="Sin espacios: solo el nombre"
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
             />
           </div>
@@ -204,7 +217,8 @@ export function ReportEditor({
             <input
               id="apellido"
               value={apellido}
-              onChange={(e) => setApellido(e.target.value)}
+              onChange={(e) => setApellido(stripSpaces(e.target.value))}
+              placeholder="Sin espacios: solo el apellido"
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
             />
           </div>
@@ -240,7 +254,8 @@ export function ReportEditor({
                 <input
                   id="beneficiarioNombre"
                   value={beneficiarioNombre}
-                  onChange={(e) => setBeneficiarioNombre(e.target.value)}
+                  onChange={(e) => setBeneficiarioNombre(stripSpaces(e.target.value))}
+                  placeholder="Sin espacios: solo el nombre"
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
                 />
               </div>
@@ -249,22 +264,32 @@ export function ReportEditor({
                 <input
                   id="beneficiarioApellido"
                   value={beneficiarioApellido}
-                  onChange={(e) => setBeneficiarioApellido(e.target.value)}
+                  onChange={(e) => setBeneficiarioApellido(stripSpaces(e.target.value))}
+                  placeholder="Sin espacios: solo el apellido"
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
                 />
               </div>
               <div className="sm:col-span-2">
-                <label htmlFor="beneficiarioEmail" className="block text-sm font-medium text-slate-700">
+                <label htmlFor="beneficiarioEmailUsuario" className="block text-sm font-medium text-slate-700">
                   Correo electrónico <span className="font-normal text-slate-400">(opcional)</span>
                 </label>
-                <input
-                  id="beneficiarioEmail"
-                  type="email"
-                  value={beneficiarioEmail}
-                  onChange={(e) => setBeneficiarioEmail(e.target.value)}
-                  placeholder="nombre@empresa.cl"
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
-                />
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    id="beneficiarioEmailUsuario"
+                    value={beneficiarioEmailUsuario}
+                    onChange={(e) => setBeneficiarioEmailUsuario(stripSpaces(e.target.value))}
+                    placeholder="nombre.apellido"
+                    className="w-full min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+                  />
+                  <span className="text-sm font-medium text-slate-500">@</span>
+                  <input
+                    id="beneficiarioEmailProveedor"
+                    value={beneficiarioEmailProveedor}
+                    onChange={(e) => setBeneficiarioEmailProveedor(stripSpaces(e.target.value))}
+                    placeholder="empresa.cl"
+                    className="w-full min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+                  />
+                </div>
               </div>
             </div>
           </>
