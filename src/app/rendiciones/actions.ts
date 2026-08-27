@@ -26,6 +26,7 @@ export async function createDraftReportAction() {
     data: {
       nombre: user.name ?? "",
       apellido: "",
+      segundoApellido: "",
       cargo: user.cargo ?? "",
       fecha: new Date(),
       userId: session.sub,
@@ -93,11 +94,13 @@ export async function finalizeReportAction(
   const headerParsed = createReportSchema.safeParse({
     nombre: formData.get("nombre"),
     apellido: formData.get("apellido"),
+    segundoApellido: formData.get("segundoApellido"),
     cargo: formData.get("cargo"),
     fecha: formData.get("fecha"),
     esParaOtraPersona: formData.get("esParaOtraPersona"),
     beneficiarioNombre: formData.get("beneficiarioNombre"),
     beneficiarioApellido: formData.get("beneficiarioApellido"),
+    beneficiarioSegundoApellido: formData.get("beneficiarioSegundoApellido"),
     beneficiarioEmail: formData.get("beneficiarioEmail"),
   });
   if (!headerParsed.success) {
@@ -130,11 +133,13 @@ export async function finalizeReportAction(
   const {
     nombre,
     apellido,
+    segundoApellido,
     cargo,
     fecha,
     esParaOtraPersona,
     beneficiarioNombre,
     beneficiarioApellido,
+    beneficiarioSegundoApellido,
     beneficiarioEmail,
   } = headerParsed.data;
 
@@ -167,6 +172,7 @@ export async function finalizeReportAction(
       data: {
         nombre,
         apellido,
+        segundoApellido,
         cargo,
         fecha: new Date(fecha),
         totalRendido: totals.totalRendido,
@@ -176,6 +182,7 @@ export async function finalizeReportAction(
         esParaOtraPersona,
         beneficiarioNombre: esParaOtraPersona ? beneficiarioNombre : null,
         beneficiarioApellido: esParaOtraPersona ? beneficiarioApellido : null,
+        beneficiarioSegundoApellido: esParaOtraPersona ? beneficiarioSegundoApellido : null,
         beneficiarioRut: esParaOtraPersona ? formatRut(finalizeParsed.data.beneficiarioRut) : null,
         beneficiarioEmail: esParaOtraPersona && beneficiarioEmail ? beneficiarioEmail : null,
         status: "SUBMITTED",
@@ -184,7 +191,7 @@ export async function finalizeReportAction(
     }),
     prisma.user.update({
       where: { id: session.sub },
-      data: { name: `${nombre} ${apellido}`.trim(), cargo },
+      data: { name: `${nombre} ${apellido} ${segundoApellido}`.trim(), cargo },
     }),
   ]);
 
@@ -198,16 +205,15 @@ export async function finalizeReportAction(
     )
     .join("");
 
-  const nombreCompleto = `${nombre} ${apellido}`.trim();
-  const porTercero = esParaOtraPersona
-    ? `<li>A nombre de: ${beneficiarioNombre} ${beneficiarioApellido}</li>`
-    : "";
+  const nombreCompleto = `${nombre} ${apellido} ${segundoApellido}`.trim();
+  const nombreBeneficiario = `${beneficiarioNombre} ${beneficiarioApellido} ${beneficiarioSegundoApellido}`.trim();
+  const porTercero = esParaOtraPersona ? `<li>A nombre de: ${nombreBeneficiario}</li>` : "";
 
   await sendEmail({
     to: [getApproverEmail(), getAdminEmail()],
     subject: `Nueva rendición N° ${report.correlativo} de ${nombreCompleto}`,
     html: `
-      <p>${nombreCompleto} (${cargo}) envió una rendición de fondos para tu revisión${esParaOtraPersona ? ` a nombre de ${beneficiarioNombre} ${beneficiarioApellido}` : ""}.</p>
+      <p>${nombreCompleto} (${cargo}) envió una rendición de fondos para tu revisión${esParaOtraPersona ? ` a nombre de ${nombreBeneficiario}` : ""}.</p>
       <ul>
         <li>Correlativo: N° ${report.correlativo}</li>
         <li>Fecha: ${formatDate(new Date(fecha))}</li>

@@ -25,11 +25,14 @@ export async function sendPendingPaymentReminders() {
 
   for (const report of pending) {
     try {
+      const porTercero = report.esParaOtraPersona
+        ? ` a nombre de ${report.beneficiarioNombre} ${report.beneficiarioApellido} ${report.beneficiarioSegundoApellido}`
+        : "";
       await sendEmail({
         to: getAdminEmail(),
         subject: `Recordatorio: falta subir comprobante de pago - Rendición N° ${report.correlativo}`,
         html: `
-          <p>Sigue pendiente subir el comprobante de la transferencia del banco para la rendición N° ${report.correlativo} de ${report.nombre} ${report.apellido} (${formatCurrency(report.totalRendido.toString())}).</p>
+          <p>Sigue pendiente subir el comprobante de la transferencia del banco para la rendición N° ${report.correlativo} de ${report.nombre} ${report.apellido} ${report.segundoApellido} (${formatCurrency(report.totalRendido.toString())})${porTercero}.</p>
           <p>Este recordatorio se repetirá cada 4 horas hasta que se suba el comprobante.</p>
           <p><a href="${baseUrl}/aprobaciones/${report.id}">Subir comprobante de pago</a></p>
         `,

@@ -40,6 +40,7 @@ export function ReportEditor({
   initial: {
     nombre: string;
     apellido: string;
+    segundoApellido: string;
     cargo: string;
     fecha: string;
   };
@@ -48,11 +49,13 @@ export function ReportEditor({
   const router = useRouter();
   const [nombre, setNombre] = useState(initial.nombre);
   const [apellido, setApellido] = useState(initial.apellido);
+  const [segundoApellido, setSegundoApellido] = useState(initial.segundoApellido);
   const [cargo, setCargo] = useState(initial.cargo);
   const [fecha, setFecha] = useState(initial.fecha);
   const [esParaOtraPersona, setEsParaOtraPersona] = useState(false);
   const [beneficiarioNombre, setBeneficiarioNombre] = useState("");
   const [beneficiarioApellido, setBeneficiarioApellido] = useState("");
+  const [beneficiarioSegundoApellido, setBeneficiarioSegundoApellido] = useState("");
   const [beneficiarioEmailUsuario, setBeneficiarioEmailUsuario] = useState("");
   const [beneficiarioEmailProveedor, setBeneficiarioEmailProveedor] = useState("");
   const [beneficiarioRut, setBeneficiarioRut] = useState("");
@@ -92,12 +95,21 @@ export function ReportEditor({
   function handleSubmit() {
     setError(null);
 
-    if (!nombre.trim() || !apellido.trim() || !cargo.trim() || !fecha) {
-      failWith("Completa todos los datos del encabezado (nombre y apellido son obligatorios).", encabezadoRef);
+    if (!nombre.trim() || !apellido.trim() || !segundoApellido.trim() || !cargo.trim() || !fecha) {
+      failWith(
+        "Completa todos los datos del encabezado (nombre, apellido y segundo apellido son obligatorios).",
+        encabezadoRef
+      );
       return;
     }
-    if (esParaOtraPersona && (!beneficiarioNombre.trim() || !beneficiarioApellido.trim())) {
-      failWith("Ingresa el nombre y apellido de la persona a nombre de quien se rinde.", encabezadoRef);
+    if (
+      esParaOtraPersona &&
+      (!beneficiarioNombre.trim() || !beneficiarioApellido.trim() || !beneficiarioSegundoApellido.trim())
+    ) {
+      failWith(
+        "Ingresa el nombre, apellido y segundo apellido de la persona a nombre de quien se rinde.",
+        encabezadoRef
+      );
       return;
     }
     const validItems = items.filter(
@@ -128,11 +140,13 @@ export function ReportEditor({
     const formData = new FormData();
     formData.set("nombre", nombre.trim());
     formData.set("apellido", apellido.trim());
+    formData.set("segundoApellido", segundoApellido.trim());
     formData.set("cargo", cargo.trim());
     formData.set("fecha", fecha);
     formData.set("esParaOtraPersona", esParaOtraPersona ? "true" : "false");
     formData.set("beneficiarioNombre", beneficiarioNombre.trim());
     formData.set("beneficiarioApellido", beneficiarioApellido.trim());
+    formData.set("beneficiarioSegundoApellido", beneficiarioSegundoApellido.trim());
     formData.set("beneficiarioEmail", beneficiarioEmail);
     formData.set("items", JSON.stringify(validItems.map((i) => ({ ...i, montoTotal: Number(i.montoTotal) }))));
     formData.set("rut", rut.trim());
@@ -218,7 +232,17 @@ export function ReportEditor({
               id="apellido"
               value={apellido}
               onChange={(e) => setApellido(stripSpaces(e.target.value))}
-              placeholder="Sin espacios: solo el apellido"
+              placeholder="Sin espacios: solo el apellido paterno"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label htmlFor="segundoApellido" className="block text-sm font-medium text-slate-700">Segundo apellido</label>
+            <input
+              id="segundoApellido"
+              value={segundoApellido}
+              onChange={(e) => setSegundoApellido(stripSpaces(e.target.value))}
+              placeholder="Sin espacios: solo el apellido materno"
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
             />
           </div>
@@ -265,7 +289,19 @@ export function ReportEditor({
                   id="beneficiarioApellido"
                   value={beneficiarioApellido}
                   onChange={(e) => setBeneficiarioApellido(stripSpaces(e.target.value))}
-                  placeholder="Sin espacios: solo el apellido"
+                  placeholder="Sin espacios: solo el apellido paterno"
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label htmlFor="beneficiarioSegundoApellido" className="block text-sm font-medium text-slate-700">
+                  Segundo apellido
+                </label>
+                <input
+                  id="beneficiarioSegundoApellido"
+                  value={beneficiarioSegundoApellido}
+                  onChange={(e) => setBeneficiarioSegundoApellido(stripSpaces(e.target.value))}
+                  placeholder="Sin espacios: solo el apellido materno"
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
                 />
               </div>

@@ -39,6 +39,7 @@ export default async function RendicionDetailPage({
               initial={{
                 nombre: report.nombre,
                 apellido: report.apellido,
+                segundoApellido: report.segundoApellido,
                 cargo: report.cargo,
                 fecha: toDateInputValue(report.fecha),
               }}

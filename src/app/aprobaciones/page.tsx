@@ -29,11 +29,12 @@ export default async function AprobacionesPage() {
               <span className="text-sm font-medium text-slate-700">Revisar →</span>
             </div>
             <p className="mt-1 text-sm text-slate-600">
-              {report.nombre} {report.apellido}
+              {report.nombre} {report.apellido} {report.segundoApellido}
               {report.esParaOtraPersona ? (
                 <span className="text-slate-400">
                   {" "}
-                  (a nombre de {report.beneficiarioNombre} {report.beneficiarioApellido})
+                  (a nombre de {report.beneficiarioNombre} {report.beneficiarioApellido}{" "}
+                  {report.beneficiarioSegundoApellido})
                 </span>
               ) : null}
             </p>
@@ -74,10 +75,11 @@ export default async function AprobacionesPage() {
               <tr key={report.id}>
                 <td className="px-4 py-3 font-medium text-slate-900">{report.correlativo}</td>
                 <td className="px-4 py-3 text-slate-600">
-                  {report.nombre} {report.apellido}{" "}
+                  {report.nombre} {report.apellido} {report.segundoApellido}{" "}
                   {report.esParaOtraPersona ? (
                     <span className="text-slate-400">
-                      (a nombre de {report.beneficiarioNombre} {report.beneficiarioApellido})
+                      (a nombre de {report.beneficiarioNombre} {report.beneficiarioApellido}{" "}
+                      {report.beneficiarioSegundoApellido})
                     </span>
                   ) : null}{" "}
                   <span className="text-slate-400">· {report.user.email}</span>

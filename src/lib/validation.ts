@@ -15,6 +15,7 @@ export const createReportSchema = z
   .object({
     nombre: z.string().trim().min(2, "Nombre muy corto").regex(/^\S+$/, NO_SPACES_MESSAGE),
     apellido: z.string().trim().min(2, "Apellido muy corto").regex(/^\S+$/, NO_SPACES_MESSAGE),
+    segundoApellido: z.string().trim().min(2, "Segundo apellido muy corto").regex(/^\S+$/, NO_SPACES_MESSAGE),
     cargo: z.string().trim().min(2, "Cargo muy corto"),
     fecha: z.string().min(1, "Fecha requerida"),
     esParaOtraPersona: z
@@ -22,6 +23,7 @@ export const createReportSchema = z
       .transform((v) => v === "true"),
     beneficiarioNombre: z.string().trim().optional().default(""),
     beneficiarioApellido: z.string().trim().optional().default(""),
+    beneficiarioSegundoApellido: z.string().trim().optional().default(""),
     beneficiarioEmail: z.string().trim().optional().default(""),
   })
   .superRefine((data, ctx) => {
@@ -35,6 +37,15 @@ export const createReportSchema = z
       ctx.addIssue({ code: "custom", path: ["beneficiarioApellido"], message: "Apellido de la persona muy corto" });
     } else if (!/^\S+$/.test(data.beneficiarioApellido)) {
       ctx.addIssue({ code: "custom", path: ["beneficiarioApellido"], message: NO_SPACES_MESSAGE });
+    }
+    if (data.beneficiarioSegundoApellido.length < 2) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["beneficiarioSegundoApellido"],
+        message: "Segundo apellido de la persona muy corto",
+      });
+    } else if (!/^\S+$/.test(data.beneficiarioSegundoApellido)) {
+      ctx.addIssue({ code: "custom", path: ["beneficiarioSegundoApellido"], message: NO_SPACES_MESSAGE });
     }
     if (data.beneficiarioEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.beneficiarioEmail)) {
       ctx.addIssue({ code: "custom", path: ["beneficiarioEmail"], message: "El correo de la persona no es válido" });

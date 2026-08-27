@@ -14,6 +14,7 @@ export type ReportViewData = {
   correlativo: number;
   nombre: string;
   apellido: string;
+  segundoApellido: string;
   cargo: string;
   fecha: Date;
   totalRendido: Decimalish;
@@ -22,6 +23,7 @@ export type ReportViewData = {
   esParaOtraPersona: boolean;
   beneficiarioNombre: string | null;
   beneficiarioApellido: string | null;
+  beneficiarioSegundoApellido: string | null;
   beneficiarioRut: string | null;
   beneficiarioEmail: string | null;
   signatureData: string | null;
@@ -71,7 +73,7 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
           <div>
             <dt className="text-slate-500">Nombre</dt>
             <dd className="font-medium text-slate-900">
-              {report.nombre} {report.apellido}
+              {report.nombre} {report.apellido} {report.segundoApellido}
             </dd>
           </div>
           <div>
@@ -88,7 +90,7 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
           <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3">
             <p className="text-xs uppercase text-slate-500">A nombre de</p>
             <p className="mt-1 text-sm font-medium text-slate-900">
-              {report.beneficiarioNombre} {report.beneficiarioApellido}
+              {report.beneficiarioNombre} {report.beneficiarioApellido} {report.beneficiarioSegundoApellido}
             </p>
             {report.beneficiarioEmail ? (
               <p className="text-sm text-slate-600">{report.beneficiarioEmail}</p>

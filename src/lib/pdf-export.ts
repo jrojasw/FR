@@ -17,12 +17,14 @@ type ReportForPdf = {
   status: string;
   nombre: string;
   apellido: string;
+  segundoApellido: string;
   cargo: string;
   fecha: Date;
   rut: string | null;
   esParaOtraPersona: boolean;
   beneficiarioNombre: string | null;
   beneficiarioApellido: string | null;
+  beneficiarioSegundoApellido: string | null;
   beneficiarioRut: string | null;
   beneficiarioEmail: string | null;
   signatureData: string | null;
@@ -206,7 +208,7 @@ export async function buildReportPdf(report: ReportForPdf): Promise<Buffer> {
       { header: "Valor", width: CONTENT_WIDTH_PX - 130 },
     ],
     [
-      ["Nombre", `${report.nombre} ${report.apellido}`],
+      ["Nombre", `${report.nombre} ${report.apellido} ${report.segundoApellido}`],
       ["Cargo", report.cargo],
       ["Fecha", formatDate(report.fecha)],
       [report.esParaOtraPersona ? "RUT (quien rinde)" : "RUT", report.rut ?? "—"],
@@ -222,7 +224,10 @@ export async function buildReportPdf(report: ReportForPdf): Promise<Buffer> {
         { header: "Valor", width: CONTENT_WIDTH_PX - 130 },
       ],
       [
-        ["Nombre", `${report.beneficiarioNombre ?? ""} ${report.beneficiarioApellido ?? ""}`],
+        [
+          "Nombre",
+          `${report.beneficiarioNombre ?? ""} ${report.beneficiarioApellido ?? ""} ${report.beneficiarioSegundoApellido ?? ""}`,
+        ],
         ["RUT", report.beneficiarioRut ?? "—"],
         ...(report.beneficiarioEmail ? [["Correo", report.beneficiarioEmail]] : []),
       ]

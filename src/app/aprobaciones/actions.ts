@@ -61,13 +61,13 @@ export async function reviewReportAction(
 
   if (parsed.data.decision === "APPROVED") {
     const porTercero = report.esParaOtraPersona
-      ? ` a nombre de ${report.beneficiarioNombre} ${report.beneficiarioApellido}`
+      ? ` a nombre de ${report.beneficiarioNombre} ${report.beneficiarioApellido} ${report.beneficiarioSegundoApellido}`
       : "";
     await sendEmail({
       to: getAdminEmail(),
       subject: `Falta subir comprobante de pago - Rendición N° ${report.correlativo}`,
       html: `
-        <p>La rendición N° ${report.correlativo} de ${report.nombre} ${report.apellido} (${formatCurrency(report.totalRendido.toString())})${porTercero} fue aprobada.</p>
+        <p>La rendición N° ${report.correlativo} de ${report.nombre} ${report.apellido} ${report.segundoApellido} (${formatCurrency(report.totalRendido.toString())})${porTercero} fue aprobada.</p>
         <p>Para cerrar el ciclo, sube el comprobante de la transferencia del banco como prueba de pago.</p>
         <p><a href="${baseUrl}/aprobaciones/${reportId}">Subir comprobante de pago</a></p>
       `,
@@ -101,14 +101,14 @@ export async function sendPaymentCertificateAction(
   const h = await headers();
   const baseUrl = process.env.APP_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
   const porTercero = report.esParaOtraPersona
-    ? ` a nombre de ${report.beneficiarioNombre} ${report.beneficiarioApellido}`
+    ? ` a nombre de ${report.beneficiarioNombre} ${report.beneficiarioApellido} ${report.beneficiarioSegundoApellido}`
     : "";
 
   await sendEmail({
     to: getPaymentNoticeEmails(),
-    subject: `Certificado de pago - Rendición N° ${report.correlativo} - ${report.nombre} ${report.apellido}`,
+    subject: `Certificado de pago - Rendición N° ${report.correlativo} - ${report.nombre} ${report.apellido} ${report.segundoApellido}`,
     html: `
-      <p>Se adjunta el certificado de pago del banco para la rendición N° ${report.correlativo} de ${report.nombre} ${report.apellido} (${report.cargo})${porTercero}.</p>
+      <p>Se adjunta el certificado de pago del banco para la rendición N° ${report.correlativo} de ${report.nombre} ${report.apellido} ${report.segundoApellido} (${report.cargo})${porTercero}.</p>
       <ul>
         <li>Fecha rendición: ${formatDate(report.fecha)}</li>
         <li>Total rendido / Reembolso correspondiente: ${formatCurrency(report.totalRendido.toString())}</li>
@@ -140,9 +140,9 @@ export async function sendPaymentCertificateAction(
     const pdfBuffer = await buildReportPdf({ ...report, status: "PAID", paidAt });
     await sendEmail({
       to: [getApproverEmail(), getAdminEmail()],
-      subject: `Expediente en PDF - Rendición N° ${report.correlativo} - ${report.nombre} ${report.apellido}`,
+      subject: `Expediente en PDF - Rendición N° ${report.correlativo} - ${report.nombre} ${report.apellido} ${report.segundoApellido}`,
       html: `
-        <p>Se adjunta en PDF el expediente completo de la rendición N° ${report.correlativo} de ${report.nombre} ${report.apellido} (${report.cargo})${porTercero}, con firma y los documentos adjuntos, para imprimir y guardar en carpeta física.</p>
+        <p>Se adjunta en PDF el expediente completo de la rendición N° ${report.correlativo} de ${report.nombre} ${report.apellido} ${report.segundoApellido} (${report.cargo})${porTercero}, con firma y los documentos adjuntos, para imprimir y guardar en carpeta física.</p>
         <p><a href="${baseUrl}/aprobaciones/${reportId}">Ver rendición</a></p>
       `,
       attachments: [
