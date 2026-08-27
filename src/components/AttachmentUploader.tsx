@@ -179,7 +179,7 @@ export function AttachmentUploader({
           type="button"
           disabled={mobileLinkLoading}
           onClick={openMobileLink}
-          className="hidden rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 md:inline-flex md:items-center md:gap-1"
+          className="hidden rounded-md border border-[#004b93] bg-[#004b93] px-3 py-2 text-sm font-medium text-white hover:bg-[#003a73] disabled:opacity-60 md:inline-flex md:items-center md:gap-1"
         >
           📱 {mobileLinkLoading ? "Generando enlace…" : "Usar el celular"}
         </button>
