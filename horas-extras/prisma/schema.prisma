@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SOLICITANTE
+  APROBADOR
+  ADMIN
+}
+
+enum OvertimeStatus {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  cargo     String?
+  email     String   @unique
+  role      Role     @default(SOLICITANTE)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  entries         OvertimeEntry[] @relation("EntryOwner")
+  reviewedEntries OvertimeEntry[] @relation("EntryReviewer")
+  otpCodes        OtpCode[]
+}
+
+// Código de un solo uso enviado por correo para iniciar sesión (passwordless)
+model OtpCode {
+  id         String    @id @default(cuid())
+  email      String
+  code       String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  @@index([email])
+}
+
+// Registro de horas extra trabajadas por un colaborador
+model OvertimeEntry {
+  id          String @id @default(cuid())
+  correlativo Int    @unique @default(autoincrement())
+
+  fecha      DateTime
+  horaInicio DateTime
+  horaFin    DateTime
+  // Horas trabajadas, calculadas a partir de horaInicio/horaFin al registrar
+  // (respaldo del cálculo; contempla turnos que cruzan la medianoche).
+  horas Decimal @db.Decimal(5, 2)
+  motivo String
+
+  status        OvertimeStatus @default(PENDIENTE)
+  createdAt     DateTime       @default(now())
+  reviewedAt    DateTime?
+  reviewComment String?
+
+  user   User   @relation("EntryOwner", fields: [userId], references: [id])
+  userId String
+
+  reviewer   User?   @relation("EntryReviewer", fields: [reviewerId], references: [id])
+  reviewerId String?
+
+  @@index([userId])
+  @@index([status])
+}
