@@ -16,3 +16,12 @@ export function buildOvertimeRange(fecha: string, horaInicio: string, horaFin: s
 
   return { fechaInicio: inicio, fechaFin: fin, horas };
 }
+
+/** true si la fecha (YYYY-MM-DD) cae en domingo. */
+export function isSunday(fecha: string): boolean {
+  return new Date(`${fecha}T00:00:00.000Z`).getUTCDay() === 0;
+}
+
+export function toDateOnly(fecha: string): Date {
+  return new Date(`${fecha}T00:00:00.000Z`);
+}

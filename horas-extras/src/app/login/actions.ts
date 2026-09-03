@@ -1,59 +1,73 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
-import { requestOtpSchema } from "@/lib/validation";
-import { resolveRoleForEmail } from "@/lib/roles";
+import { createSession } from "@/lib/auth";
+import { adminLoginSchema, pinLoginSchema } from "@/lib/validation";
 
-export type RequestOtpState = {
+export type PinLoginState = {
   error?: string;
 };
 
-function generateCode(): string {
-  return String(Math.floor(1000 + Math.random() * 9000));
+export async function pinLoginAction(
+  _prevState: PinLoginState,
+  formData: FormData
+): Promise<PinLoginState> {
+  const parsed = pinLoginSchema.safeParse({
+    userId: formData.get("userId"),
+    pin: formData.get("pin"),
+  });
+  if (!parsed.success) {
+    return { error: "Ingresa un PIN válido." };
+  }
+  const { userId, pin } = parsed.data;
+
+  const user = await prisma.user.findFirst({
+    where: { id: userId, role: "SOLICITANTE", active: true },
+  });
+  if (!user || !user.pinHash) {
+    return { error: "Colaboradora no encontrada." };
+  }
+
+  const valid = await bcrypt.compare(pin, user.pinHash);
+  if (!valid) {
+    return { error: "PIN incorrecto." };
+  }
+
+  await createSession({ sub: user.id, role: user.role, name: user.name });
+  redirect("/");
 }
 
-export async function requestOtpAction(
-  _prevState: RequestOtpState,
+export type AdminLoginState = {
+  error?: string;
+};
+
+export async function adminLoginAction(
+  _prevState: AdminLoginState,
   formData: FormData
-): Promise<RequestOtpState> {
-  const parsed = requestOtpSchema.safeParse({ email: formData.get("email") });
+): Promise<AdminLoginState> {
+  const parsed = adminLoginSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
   if (!parsed.success) {
-    return { error: "Ingresa un correo válido." };
+    return { error: "Ingresa un correo y clave válidos." };
   }
-  const { email } = parsed.data;
+  const { email, password } = parsed.data;
 
-  const user = await prisma.user.upsert({
-    where: { email },
-    update: { role: resolveRoleForEmail(email) },
-    create: { email, role: resolveRoleForEmail(email) },
+  const user = await prisma.user.findFirst({
+    where: { email, role: "ADMIN", active: true },
   });
+  if (!user || !user.passwordHash) {
+    return { error: "Credenciales incorrectas." };
+  }
 
-  await prisma.otpCode.updateMany({
-    where: { email, consumedAt: null },
-    data: { consumedAt: new Date() },
-  });
+  const valid = await bcrypt.compare(password, user.passwordHash);
+  if (!valid) {
+    return { error: "Credenciales incorrectas." };
+  }
 
-  const code = generateCode();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-  await prisma.otpCode.create({
-    data: { email, code, expiresAt, userId: user.id },
-  });
-
-  const { delivered } = await sendEmail({
-    to: email,
-    subject: "Tu código de acceso - Horas Extra",
-    html: `<p>Tu código de acceso a Horas Extra es:</p>
-      <p style="font-size:28px;font-weight:bold;letter-spacing:6px">${code}</p>
-      <p>Vence en 10 minutos. Si no lo solicitaste, ignora este correo.</p>`,
-  });
-
-  const params = new URLSearchParams({ email });
-  const next = formData.get("next");
-  if (typeof next === "string" && next.startsWith("/")) params.set("next", next);
-  if (!delivered) params.set("dev", code);
-
-  redirect(`/login/verificar?${params.toString()}`);
+  await createSession({ sub: user.id, role: user.role, name: user.name });
+  redirect("/");
 }

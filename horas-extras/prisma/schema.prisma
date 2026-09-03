@@ -12,8 +12,12 @@ datasource db {
 
 enum Role {
   SOLICITANTE
-  APROBADOR
   ADMIN
+}
+
+enum TipoRegistro {
+  TURNO_DOMINGO
+  HORAS_EXTRA
 }
 
 enum OvertimeStatus {
@@ -24,51 +28,45 @@ enum OvertimeStatus {
 
 model User {
   id        String   @id @default(cuid())
-  name      String?
-  cargo     String?
-  email     String   @unique
+  name      String
   role      Role     @default(SOLICITANTE)
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
+  // Colaboradora (SOLICITANTE): acceso con PIN fijo asignado por la Administradora.
+  pinHash String?
+
+  // Administradora (ADMIN): acceso con correo y clave.
+  email        String? @unique
+  passwordHash String?
+
   entries         OvertimeEntry[] @relation("EntryOwner")
   reviewedEntries OvertimeEntry[] @relation("EntryReviewer")
-  otpCodes        OtpCode[]
 }
 
-// Código de un solo uso enviado por correo para iniciar sesión (passwordless)
-model OtpCode {
-  id         String    @id @default(cuid())
-  email      String
-  code       String
-  expiresAt  DateTime
-  consumedAt DateTime?
-  attempts   Int       @default(0)
-  createdAt  DateTime  @default(now())
-
-  user   User?   @relation(fields: [userId], references: [id])
-  userId String?
-
-  @@index([email])
-}
-
-// Registro de horas extra trabajadas por un colaborador
+// Registro de un turno domingo (aseo) o de horas extra entre semana.
 model OvertimeEntry {
-  id          String @id @default(cuid())
-  correlativo Int    @unique @default(autoincrement())
+  id          String       @id @default(cuid())
+  correlativo Int          @unique @default(autoincrement())
+  tipo        TipoRegistro
 
-  fecha      DateTime
-  horaInicio DateTime
-  horaFin    DateTime
-  // Horas trabajadas, calculadas a partir de horaInicio/horaFin al registrar
-  // (respaldo del cálculo; contempla turnos que cruzan la medianoche).
-  horas Decimal @db.Decimal(5, 2)
-  motivo String
+  fecha DateTime
+
+  // Solo aplican a HORAS_EXTRA; TURNO_DOMINGO es una unidad completa sin horario.
+  horaInicio DateTime?
+  horaFin    DateTime?
+  horas      Decimal?      @db.Decimal(5, 2)
+
+  motivo String?
 
   status        OvertimeStatus @default(PENDIENTE)
   createdAt     DateTime       @default(now())
   reviewedAt    DateTime?
   reviewComment String?
+  // La administradora marca esto al aprobar, tras confirmar que el registro
+  // coincide con la marcación del reloj biométrico (la validación biométrica
+  // ocurre en el reloj físico, fuera de esta app).
+  validadoReloj Boolean        @default(false)
 
   user   User   @relation("EntryOwner", fields: [userId], references: [id])
   userId String

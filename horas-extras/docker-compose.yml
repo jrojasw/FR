@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: horas_extras
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/horas_extras?schema=public
+      SESSION_SECRET: ${SESSION_SECRET:-cambia-este-valor-por-uno-aleatorio-y-largo}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@ejemplo.cl}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-cambia-esta-clave}
+      ADMIN_NAME: ${ADMIN_NAME:-Administradora}
+
+volumes:
+  db_data:

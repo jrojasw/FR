@@ -7,17 +7,18 @@ export async function NavBar() {
   const session = await getSession();
   if (!session) return null;
 
-  const links: { href: string; label: string }[] = [
-    { href: "/", label: "Inicio" },
-    { href: "/horas", label: "Mis horas extra" },
-  ];
+  const links: { href: string; label: string }[] = [{ href: "/", label: "Inicio" }];
 
-  if (session.role === "APROBADOR" || session.role === "ADMIN") {
-    links.push({ href: "/aprobaciones", label: "Aprobaciones" });
+  if (session.role === "SOLICITANTE") {
+    links.push({ href: "/horas", label: "Mis horas extra" });
   }
 
   if (session.role === "ADMIN") {
-    links.push({ href: "/admin/registro", label: "Registro" });
+    links.push(
+      { href: "/aprobaciones", label: "Aprobaciones" },
+      { href: "/admin/registro", label: "Registro" },
+      { href: "/admin/usuarios", label: "Colaboradoras" }
+    );
   }
 
   return (

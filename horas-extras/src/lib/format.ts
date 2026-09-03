@@ -49,7 +49,11 @@ export const overtimeStatusStyles: Record<string, string> = {
 };
 
 export const roleLabels: Record<string, string> = {
-  SOLICITANTE: "Solicitante",
-  APROBADOR: "Aprobador",
-  ADMIN: "Administrador",
+  SOLICITANTE: "Colaboradora",
+  ADMIN: "Administradora",
+};
+
+export const tipoRegistroLabels: Record<string, string> = {
+  TURNO_DOMINGO: "Turno domingo (aseo)",
+  HORAS_EXTRA: "Horas extra semana",
 };

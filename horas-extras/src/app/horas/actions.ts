@@ -2,22 +2,60 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
-import { getApproverEmail, getAdminEmail } from "@/lib/roles";
-import { overtimeEntrySchema } from "@/lib/validation";
-import { buildOvertimeRange } from "@/lib/overtime";
-import { formatDate, formatHours, formatTime } from "@/lib/format";
+import { overtimeEntrySchema, type OvertimeEntryInput } from "@/lib/validation";
+import { buildOvertimeRange, isSunday, toDateOnly } from "@/lib/overtime";
 
 export type EntryFormState = {
   error?: string;
 };
 
-async function baseUrl() {
-  const h = await headers();
-  return process.env.APP_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
+function parseEntry(formData: FormData) {
+  return overtimeEntrySchema.safeParse({
+    tipo: formData.get("tipo"),
+    fecha: formData.get("fecha"),
+    horaInicio: formData.get("horaInicio") || undefined,
+    horaFin: formData.get("horaFin") || undefined,
+    motivo: formData.get("motivo") || undefined,
+  });
+}
+
+function buildEntryData(parsed: OvertimeEntryInput) {
+  if (parsed.tipo === "TURNO_DOMINGO") {
+    if (!isSunday(parsed.fecha)) {
+      return { error: "La fecha del turno debe ser un domingo." } as const;
+    }
+    return {
+      data: {
+        tipo: "TURNO_DOMINGO" as const,
+        fecha: toDateOnly(parsed.fecha),
+        horaInicio: null,
+        horaFin: null,
+        horas: null,
+        motivo: parsed.motivo || null,
+      },
+    } as const;
+  }
+
+  const { fechaInicio, fechaFin, horas } = buildOvertimeRange(
+    parsed.fecha,
+    parsed.horaInicio,
+    parsed.horaFin
+  );
+  if (horas <= 0 || horas > 18) {
+    return { error: "El rango de horas no es válido." } as const;
+  }
+  return {
+    data: {
+      tipo: "HORAS_EXTRA" as const,
+      fecha: toDateOnly(parsed.fecha),
+      horaInicio: fechaInicio,
+      horaFin: fechaFin,
+      horas,
+      motivo: parsed.motivo,
+    },
+  } as const;
 }
 
 export async function createEntryAction(
@@ -26,44 +64,16 @@ export async function createEntryAction(
 ): Promise<EntryFormState> {
   const session = await requireUser();
 
-  const parsed = overtimeEntrySchema.safeParse({
-    fecha: formData.get("fecha"),
-    horaInicio: formData.get("horaInicio"),
-    horaFin: formData.get("horaFin"),
-    motivo: formData.get("motivo"),
-  });
+  const parsed = parseEntry(formData);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Revisa los datos ingresados." };
   }
 
-  const { fecha, horaInicio, horaFin, motivo } = parsed.data;
-  const { fechaInicio, fechaFin, horas } = buildOvertimeRange(fecha, horaInicio, horaFin);
+  const built = buildEntryData(parsed.data);
+  if ("error" in built) return { error: built.error };
 
-  if (horas <= 0 || horas > 18) {
-    return { error: "El rango de horas no es válido." };
-  }
-
-  const entry = await prisma.overtimeEntry.create({
-    data: {
-      fecha: new Date(`${fecha}T00:00:00.000Z`),
-      horaInicio: fechaInicio,
-      horaFin: fechaFin,
-      horas,
-      motivo,
-      userId: session.sub,
-    },
-  });
-
-  const url = await baseUrl();
-  await sendEmail({
-    to: [getApproverEmail(), getAdminEmail()],
-    subject: `Nueva solicitud de horas extra - ${session.name}`,
-    html: `
-      <p>${session.name} registró ${formatHours(horas)} extra el ${formatDate(entry.fecha)}
-      (${formatTime(fechaInicio)} a ${formatTime(fechaFin)}).</p>
-      <p>Motivo: ${motivo}</p>
-      <p><a href="${url}/aprobaciones/${entry.id}">Revisar solicitud</a></p>
-    `,
+  await prisma.overtimeEntry.create({
+    data: { ...built.data, userId: session.sub },
   });
 
   revalidatePath("/horas");
@@ -77,12 +87,7 @@ export async function updateEntryAction(
 ): Promise<EntryFormState> {
   const session = await requireUser();
 
-  const parsed = overtimeEntrySchema.safeParse({
-    fecha: formData.get("fecha"),
-    horaInicio: formData.get("horaInicio"),
-    horaFin: formData.get("horaFin"),
-    motivo: formData.get("motivo"),
-  });
+  const parsed = parseEntry(formData);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Revisa los datos ingresados." };
   }
@@ -94,22 +99,12 @@ export async function updateEntryAction(
     return { error: "El registro no existe o ya fue revisado." };
   }
 
-  const { fecha, horaInicio, horaFin, motivo } = parsed.data;
-  const { fechaInicio, fechaFin, horas } = buildOvertimeRange(fecha, horaInicio, horaFin);
-
-  if (horas <= 0 || horas > 18) {
-    return { error: "El rango de horas no es válido." };
-  }
+  const built = buildEntryData(parsed.data);
+  if ("error" in built) return { error: built.error };
 
   await prisma.overtimeEntry.update({
     where: { id: entryId },
-    data: {
-      fecha: new Date(`${fecha}T00:00:00.000Z`),
-      horaInicio: fechaInicio,
-      horaFin: fechaFin,
-      horas,
-      motivo,
-    },
+    data: built.data,
   });
 
   revalidatePath("/horas");

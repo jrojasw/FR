@@ -11,6 +11,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
+    "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "jose": "^6.2.8",
@@ -18,7 +19,6 @@
     "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "resend": "^6.19.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
