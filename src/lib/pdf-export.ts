@@ -44,7 +44,26 @@ type ReportForPdf = {
     mimeType: string;
     kind: string;
   }[];
+  paymentCertificatePath: string | null;
+  paymentCertificateName: string | null;
 };
+
+const CERTIFICATE_MIME_TYPES: Record<string, string> = {
+  pdf: "application/pdf",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  heic: "image/heic",
+};
+
+// El certificado de pago no guarda su mimeType (a diferencia de los
+// adjuntos del trabajador), así que se infiere de la extensión del nombre
+// original, que es lo único disponible.
+function guessMimeTypeFromFileName(fileName: string): string {
+  const ext = fileName.toLowerCase().split(".").pop() ?? "";
+  return CERTIFICATE_MIME_TYPES[ext] ?? "application/octet-stream";
+}
 
 async function toEmbeddableJpeg(
   buffer: Buffer,
@@ -104,6 +123,74 @@ function sectionHeading(doc: PDFKit.PDFDocument, text: string) {
   doc.moveDown(0.3);
   resetX(doc);
   doc.font("Helvetica").fontSize(10).fillColor("#000000");
+}
+
+// Incrusta un adjunto (imagen o PDF) en el expediente: las imágenes se
+// dibujan directamente, los PDF quedan pendientes en pdfAttachmentsToAppend
+// para fusionarse página a página al final, y lo que no se puede incrustar
+// queda listado por nombre. Se usa tanto para los adjuntos del trabajador
+// como para el certificado de pago.
+async function embedAttachment(
+  doc: PDFKit.PDFDocument,
+  pdfAttachmentsToAppend: { fileName: string; bytes: Buffer }[],
+  attachment: { fileName: string; filePath: string; mimeType: string; isImage: boolean }
+) {
+  const { fileName, filePath, mimeType, isImage } = attachment;
+  const isPdf = mimeType === "application/pdf";
+  let handled = false;
+
+  if (isImage) {
+    try {
+      const buffer = await readAttachmentFile(filePath);
+      const embeddable = await toEmbeddableJpeg(buffer, CONTENT_WIDTH_PX);
+      if (embeddable) {
+        const bottom = doc.page.height - doc.page.margins.bottom;
+        let availableHeight = bottom - doc.y - IMAGE_CAPTION_ALLOWANCE_PX;
+        // Si queda muy poco espacio en la hoja actual, recién ahí se pasa
+        // de hoja; si no, la imagen se ajusta para caber sin dejar una
+        // hoja casi en blanco.
+        if (availableHeight < MIN_IMAGE_HEIGHT_PX) {
+          doc.addPage();
+          availableHeight = bottom - doc.y - IMAGE_CAPTION_ALLOWANCE_PX;
+        }
+        const box = fitWithinBox(embeddable.width, embeddable.height, CONTENT_WIDTH_PX, availableHeight);
+        doc.image(embeddable.data, doc.page.margins.left, doc.y, { width: box.width, height: box.height });
+        doc.y += box.height + 4;
+        resetX(doc);
+        doc.font("Helvetica-Oblique").fontSize(8).fillColor("#64748b").text(fileName);
+        doc.font("Helvetica").fontSize(10).fillColor("#000000");
+        resetX(doc);
+        doc.moveDown(0.6);
+        handled = true;
+      }
+    } catch {
+      handled = false;
+    }
+  } else if (isPdf) {
+    // Los documentos en PDF (facturas digitales, certificado de pago, etc.)
+    // no son fotos, pero sí se pueden fusionar página a página al final del
+    // expediente para que también queden impresos.
+    try {
+      const buffer = await readAttachmentFile(filePath);
+      pdfAttachmentsToAppend.push({ fileName, bytes: buffer });
+      ensureSpace(doc, 20);
+      resetX(doc);
+      doc.text(`- ${fileName} (documento PDF adjunto, se agrega completo a continuación)`);
+      handled = true;
+    } catch {
+      handled = false;
+    }
+  }
+
+  if (!handled) {
+    ensureSpace(doc, 20);
+    resetX(doc);
+    doc.text(
+      isImage
+        ? `- ${fileName} (no se pudo incluir la imagen; disponible en el sistema)`
+        : `- ${fileName} (documento adjunto — no se pudo incrustar en este PDF; ábrelo por separado en el sistema)`
+    );
+  }
 }
 
 function drawTable(
@@ -290,62 +377,30 @@ export async function buildReportPdf(report: ReportForPdf): Promise<Buffer> {
   const pdfAttachmentsToAppend: { fileName: string; bytes: Buffer }[] = [];
 
   for (const attachment of report.attachments) {
-    const isImage = attachment.kind === "PHOTO" || attachment.mimeType.startsWith("image/");
-    const isPdf = attachment.mimeType === "application/pdf";
-    let handled = false;
+    await embedAttachment(doc, pdfAttachmentsToAppend, {
+      fileName: attachment.fileName,
+      filePath: attachment.filePath,
+      mimeType: attachment.mimeType,
+      isImage: attachment.kind === "PHOTO" || attachment.mimeType.startsWith("image/"),
+    });
+  }
 
-    if (isImage) {
-      try {
-        const buffer = await readAttachmentFile(attachment.filePath);
-        const embeddable = await toEmbeddableJpeg(buffer, CONTENT_WIDTH_PX);
-        if (embeddable) {
-          const bottom = doc.page.height - doc.page.margins.bottom;
-          let availableHeight = bottom - doc.y - IMAGE_CAPTION_ALLOWANCE_PX;
-          // Si queda muy poco espacio en la hoja actual, recién ahí se pasa
-          // de hoja; si no, la imagen se ajusta para caber sin dejar una
-          // hoja casi en blanco.
-          if (availableHeight < MIN_IMAGE_HEIGHT_PX) {
-            doc.addPage();
-            availableHeight = bottom - doc.y - IMAGE_CAPTION_ALLOWANCE_PX;
-          }
-          const box = fitWithinBox(embeddable.width, embeddable.height, CONTENT_WIDTH_PX, availableHeight);
-          doc.image(embeddable.data, doc.page.margins.left, doc.y, { width: box.width, height: box.height });
-          doc.y += box.height + 4;
-          resetX(doc);
-          doc.font("Helvetica-Oblique").fontSize(8).fillColor("#64748b").text(attachment.fileName);
-          doc.font("Helvetica").fontSize(10).fillColor("#000000");
-          resetX(doc);
-          doc.moveDown(0.6);
-          handled = true;
-        }
-      } catch {
-        handled = false;
-      }
-    } else if (isPdf) {
-      // Los documentos subidos como PDF (facturas digitales, etc.) no son
-      // fotos, pero sí se pueden fusionar página a página al final del
-      // expediente para que también queden impresos.
-      try {
-        const buffer = await readAttachmentFile(attachment.filePath);
-        pdfAttachmentsToAppend.push({ fileName: attachment.fileName, bytes: buffer });
-        ensureSpace(doc, 20);
-        resetX(doc);
-        doc.text(`- ${attachment.fileName} (documento PDF adjunto, se agrega completo a continuación)`);
-        handled = true;
-      } catch {
-        handled = false;
-      }
+  // El comprobante de pago que sube el Administrador va siempre al final del
+  // expediente, después de los adjuntos del trabajador: es lo último que
+  // queda registrado antes de imprimir y archivar.
+  if (report.paymentCertificatePath) {
+    const fileName = report.paymentCertificateName ?? "certificado-pago";
+    const mimeType = guessMimeTypeFromFileName(fileName);
+    if (report.attachments.length === 0) {
+      doc.addPage();
     }
-
-    if (!handled) {
-      ensureSpace(doc, 20);
-      resetX(doc);
-      doc.text(
-        isImage
-          ? `- ${attachment.fileName} (no se pudo incluir la imagen; disponible en el sistema)`
-          : `- ${attachment.fileName} (documento adjunto — no se pudo incrustar en este PDF; ábrelo por separado en el sistema)`
-      );
-    }
+    sectionHeading(doc, "Comprobante de pago");
+    await embedAttachment(doc, pdfAttachmentsToAppend, {
+      fileName,
+      filePath: report.paymentCertificatePath,
+      mimeType,
+      isImage: mimeType.startsWith("image/"),
+    });
   }
 
   // Nota de pie: solo se agrega si entra en el espacio que ya queda en la
