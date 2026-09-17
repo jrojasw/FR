@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { saveAttachmentFile, readAttachmentFile } from "@/lib/storage";
+import { canViewRegistry } from "@/lib/roles";
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic"]);
@@ -73,7 +74,9 @@ export async function GET(
 
   const isOwner = report.userId === session.sub;
   const canReview = session.role === "APROBADOR" || session.role === "ADMIN";
-  if (!isOwner && !canReview) return new NextResponse("No autorizado", { status: 403 });
+  if (!isOwner && !canReview && !canViewRegistry(session)) {
+    return new NextResponse("No autorizado", { status: 403 });
+  }
 
   const buffer = await readAttachmentFile(report.paymentCertificatePath);
   return new NextResponse(new Uint8Array(buffer), {

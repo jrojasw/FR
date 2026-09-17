@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildReportPdf } from "@/lib/pdf-export";
+import { canViewRegistry } from "@/lib/roles";
 
 export async function GET(
   _request: NextRequest,
@@ -23,7 +24,9 @@ export async function GET(
 
   const isOwner = report.userId === session.sub;
   const canReview = session.role === "APROBADOR" || session.role === "ADMIN";
-  if (!isOwner && !canReview) return new NextResponse("No autorizado", { status: 403 });
+  if (!isOwner && !canReview && !canViewRegistry(session)) {
+    return new NextResponse("No autorizado", { status: 403 });
+  }
 
   const buffer = await buildReportPdf(report);
   return new NextResponse(new Uint8Array(buffer), {
