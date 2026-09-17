@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth";
+import { canViewRegistry } from "@/lib/roles";
 import { fetchRegistryReports } from "@/lib/registry";
 import { buildExportRows, buildXlsxBuffer, buildCsv } from "@/lib/export";
 import type { ReportStatus } from "@/generated/prisma/enums";
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") {
+  if (!session || (session.role !== "ADMIN" && !canViewRegistry(session))) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 

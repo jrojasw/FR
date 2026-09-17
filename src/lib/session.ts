@@ -7,6 +7,7 @@ export type SessionPayload = {
   sub: string;
   role: Role;
   name: string;
+  email: string;
 };
 
 function secretKey() {
@@ -16,7 +17,7 @@ function secretKey() {
 }
 
 export async function signSession(payload: SessionPayload, expiresIn: string = "7d"): Promise<string> {
-  return new SignJWT({ role: payload.role, name: payload.name })
+  return new SignJWT({ role: payload.role, name: payload.name, email: payload.email })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(payload.sub)
     .setIssuedAt()
@@ -30,7 +31,11 @@ export async function verifySession(token: string): Promise<SessionPayload | nul
     if (typeof payload.sub !== "string" || typeof payload.role !== "string" || typeof payload.name !== "string") {
       return null;
     }
-    return { sub: payload.sub, role: payload.role as Role, name: payload.name };
+    // "email" se agregó después: una sesión emitida antes de este cambio no
+    // la trae, así que se tolera ausente en vez de invalidar sesiones ya
+    // activas.
+    const email = typeof payload.email === "string" ? payload.email : "";
+    return { sub: payload.sub, role: payload.role as Role, name: payload.name, email };
   } catch {
     return null;
   }

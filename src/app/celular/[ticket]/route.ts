@@ -24,7 +24,10 @@ export async function GET(
     return NextResponse.redirect(new URL("/login?error=enlace-vencido", request.url));
   }
 
-  await createSession({ sub: user.id, role: user.role, name: user.name ?? user.email }, 60 * 60 * 2);
+  await createSession(
+    { sub: user.id, role: user.role, name: user.name ?? user.email, email: user.email },
+    60 * 60 * 2
+  );
 
   return NextResponse.redirect(new URL(`/rendiciones/${claims.reportId}`, request.url));
 }

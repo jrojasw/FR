@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { signSession, verifySession, SESSION_COOKIE_NAME, type SessionPayload } from "./session";
+import { canViewRegistry } from "./roles";
 import type { Role } from "@/generated/prisma/enums";
 
 export async function createSession(payload: SessionPayload, maxAgeSeconds: number = 60 * 60 * 24 * 7) {
@@ -38,5 +39,15 @@ export async function requireUser(): Promise<SessionPayload> {
 export async function requireRole(...roles: Role[]): Promise<SessionPayload> {
   const session = await requireUser();
   if (!roles.includes(session.role)) redirect("/");
+  return session;
+}
+
+// Igual que requireRole, pero además deja pasar a los correos de solo
+// lectura del Registro (contabilidad, etc.) aunque su rol no esté en la
+// lista — usado en las pantallas de ver el registro y el detalle de una
+// rendición, nunca en las acciones que aprueban, pagan o eliminan.
+export async function requireRoleOrRegistryViewer(...roles: Role[]): Promise<SessionPayload> {
+  const session = await requireUser();
+  if (!roles.includes(session.role) && !canViewRegistry(session)) redirect("/");
   return session;
 }

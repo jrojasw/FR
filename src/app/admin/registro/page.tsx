@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireRole } from "@/lib/auth";
+import { requireRoleOrRegistryViewer } from "@/lib/auth";
 import { fetchRegistryReports, groupByDate, listReportYears } from "@/lib/registry";
 import { formatCurrency, reportStatusLabels } from "@/lib/format";
 import { EmailRegistryForm } from "@/components/EmailRegistryForm";
@@ -17,7 +17,8 @@ export default async function AdminRegistroPage({
 }: {
   searchParams: Promise<{ year?: string; month?: string; status?: string }>;
 }) {
-  await requireRole("ADMIN");
+  const session = await requireRoleOrRegistryViewer("ADMIN");
+  const isAdmin = session.role === "ADMIN";
   const { year, month, status } = await searchParams;
 
   const years = await listReportYears();
@@ -90,9 +91,11 @@ export default async function AdminRegistroPage({
         </div>
       </form>
 
-      <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <EmailRegistryForm year={year} month={month} status={status} />
-      </div>
+      {isAdmin && (
+        <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <EmailRegistryForm year={year} month={month} status={status} />
+        </div>
+      )}
 
       <div className="mt-6 space-y-8">
         {Array.from(grouped.entries()).map(([y, months]) => (
@@ -139,11 +142,13 @@ export default async function AdminRegistroPage({
                             >
                               Ver →
                             </Link>
-                            <DeleteReportForm
-                              reportId={report.id}
-                              correlativo={report.correlativo}
-                              action={deleteReportAsAdminAction}
-                            />
+                            {isAdmin && (
+                              <DeleteReportForm
+                                reportId={report.id}
+                                correlativo={report.correlativo}
+                                action={deleteReportAsAdminAction}
+                              />
+                            )}
                           </div>
                         </div>
                       ))}
@@ -179,11 +184,13 @@ export default async function AdminRegistroPage({
                                 </Link>
                               </td>
                               <td className="px-4 py-2 text-right">
-                                <DeleteReportForm
-                                  reportId={report.id}
-                                  correlativo={report.correlativo}
-                                  action={deleteReportAsAdminAction}
-                                />
+                                {isAdmin && (
+                                  <DeleteReportForm
+                                    reportId={report.id}
+                                    correlativo={report.correlativo}
+                                    action={deleteReportAsAdminAction}
+                                  />
+                                )}
                               </td>
                             </tr>
                           ))}

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireRole } from "@/lib/auth";
+import { requireRoleOrRegistryViewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ReportView } from "@/components/ReportView";
 import { ReviewForm } from "@/components/ReviewForm";
@@ -10,7 +10,8 @@ export default async function AprobacionDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await requireRole("APROBADOR", "ADMIN");
+  const session = await requireRoleOrRegistryViewer("APROBADOR", "ADMIN");
+  const canReview = session.role === "APROBADOR" || session.role === "ADMIN";
   const { id } = await params;
 
   const report = await prisma.expenseReport.findFirst({
@@ -40,7 +41,7 @@ export default async function AprobacionDetailPage({
           report={report}
           actions={
             <>
-              {report.status === "SUBMITTED" && <ReviewForm reportId={report.id} />}
+              {canReview && report.status === "SUBMITTED" && <ReviewForm reportId={report.id} />}
               {canManagePayment && (
                 <PaymentCertificateForm
                   reportId={report.id}

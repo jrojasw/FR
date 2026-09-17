@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifySession, SESSION_COOKIE_NAME } from "@/lib/session";
+import { canViewRegistry } from "@/lib/roles";
 
 const PUBLIC_PATHS = new Set(["/login", "/login/verificar"]);
 
@@ -29,12 +30,23 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  if (pathname.startsWith("/admin") && session.role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/", request.url));
+  if (pathname.startsWith("/admin")) {
+    // El Registro (a diferencia del resto de /admin) también lo pueden ver
+    // los correos de solo lectura configurados en REGISTRY_VIEWER_EMAILS.
+    const isRegistro = pathname.startsWith("/admin/registro");
+    if (session.role !== "ADMIN" && !(isRegistro && canViewRegistry(session))) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
   }
 
   if (pathname.startsWith("/aprobaciones") && session.role === "SOLICITANTE") {
-    return NextResponse.redirect(new URL("/", request.url));
+    // El detalle de una rendición (no el listado de pendientes) también lo
+    // pueden ver los correos de solo lectura del Registro, para que los
+    // enlaces "Ver →" desde /admin/registro les funcionen.
+    const isDetail = pathname.startsWith("/aprobaciones/");
+    if (!(isDetail && canViewRegistry(session))) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
   }
 
   return NextResponse.next();

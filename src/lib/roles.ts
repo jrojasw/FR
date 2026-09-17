@@ -10,6 +10,14 @@ const PAYMENT_NOTICE_EMAILS = (
   .map((email) => email.trim())
   .filter(Boolean);
 
+// Correos que pueden ver el Registro (y el detalle de cada rendición desde
+// ahí) sin ser Aprobador ni Administrador — de solo lectura: no pueden
+// aprobar, subir comprobantes, eliminar ni enviar el registro por correo.
+const REGISTRY_VIEWER_EMAILS = (process.env.REGISTRY_VIEWER_EMAILS || "contabilidad@copayapunos.cl")
+  .split(",")
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
+
 export function resolveRoleForEmail(email: string): Role {
   const normalized = email.trim().toLowerCase();
   if (normalized === ADMIN_EMAIL) return "ADMIN";
@@ -27,4 +35,9 @@ export function getAdminEmail(): string {
 
 export function getPaymentNoticeEmails(): string[] {
   return PAYMENT_NOTICE_EMAILS;
+}
+
+export function canViewRegistry(session: { role: Role; email: string }): boolean {
+  if (session.role === "ADMIN") return true;
+  return REGISTRY_VIEWER_EMAILS.includes(session.email.trim().toLowerCase());
 }

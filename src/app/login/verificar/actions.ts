@@ -50,7 +50,7 @@ export async function verifyOtpAction(
 
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
 
-  await createSession({ sub: user.id, role: user.role, name: user.name ?? email });
+  await createSession({ sub: user.id, role: user.role, name: user.name ?? email, email: user.email });
 
   const next = formData.get("next");
   redirect(typeof next === "string" && next.startsWith("/") ? next : "/");

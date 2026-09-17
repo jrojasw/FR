@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { reportStatusLabels } from "@/lib/format";
 import { createDraftReportAction } from "@/app/rendiciones/actions";
+import { canViewRegistry } from "@/lib/roles";
 
 export default async function HomePage() {
   const session = await requireUser();
@@ -57,7 +58,7 @@ export default async function HomePage() {
             Aprobaciones pendientes ({pendingApproval})
           </Link>
         )}
-        {session.role === "ADMIN" && (
+        {canViewRegistry(session) && (
           <Link
             href="/admin/registro"
             className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"

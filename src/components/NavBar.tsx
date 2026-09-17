@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { logoutAction } from "@/app/logout/actions";
 import { roleLabels } from "@/lib/format";
+import { canViewRegistry } from "@/lib/roles";
 
 export async function NavBar() {
   const session = await getSession();
@@ -16,7 +17,7 @@ export async function NavBar() {
     links.push({ href: "/aprobaciones", label: "Aprobaciones" });
   }
 
-  if (session.role === "ADMIN") {
+  if (session.role === "ADMIN" || canViewRegistry(session)) {
     links.push({ href: "/admin/registro", label: "Registro" });
   }
 
