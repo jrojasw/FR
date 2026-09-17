@@ -8,9 +8,11 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { readAttachmentFile } from "@/lib/storage";
 import { getPaymentNoticeEmails, getAdminEmail, getApproverEmail } from "@/lib/roles";
-import { reviewReportSchema } from "@/lib/validation";
+import { reviewReportSchema, createReportSchema, saveItemsSchema, finalizeReportSchema } from "@/lib/validation";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { buildReportPdf } from "@/lib/pdf-export";
+import { computeTotals } from "@/lib/reports";
+import { isValidRut, formatRut } from "@/lib/rut";
 
 export type ReviewState = {
   error?: string;
@@ -152,6 +154,129 @@ export async function sendPaymentCertificateAction(
   } catch (error) {
     console.error("Error generando/enviando el expediente en PDF:", error);
   }
+
+  revalidatePath(`/aprobaciones/${reportId}`);
+  redirect(`/aprobaciones/${reportId}`);
+}
+
+export type AdminUpdateReportState = {
+  error?: string;
+};
+
+// Permite al Administrador corregir cualquier dato de una rendición ya
+// enviada (Enviada, Aprobada, Rechazada o Pagada) sin reiniciar el ciclo:
+// no cambia el estado ni dispara el correo de "nueva rendición", solo
+// guarda la corrección en el lugar.
+export async function adminUpdateReportAction(
+  reportId: string,
+  formData: FormData
+): Promise<AdminUpdateReportState> {
+  await requireRole("ADMIN");
+
+  const report = await prisma.expenseReport.findFirst({
+    where: { id: reportId, status: { not: "DRAFT" } },
+  });
+  if (!report) return { error: "Rendición no encontrada." };
+
+  const headerParsed = createReportSchema.safeParse({
+    nombre: formData.get("nombre"),
+    apellido: formData.get("apellido"),
+    segundoApellido: formData.get("segundoApellido"),
+    cargo: formData.get("cargo"),
+    fecha: formData.get("fecha"),
+    esParaOtraPersona: formData.get("esParaOtraPersona"),
+    beneficiarioNombre: formData.get("beneficiarioNombre"),
+    beneficiarioApellido: formData.get("beneficiarioApellido"),
+    beneficiarioSegundoApellido: formData.get("beneficiarioSegundoApellido"),
+    beneficiarioEmail: formData.get("beneficiarioEmail"),
+  });
+  if (!headerParsed.success) {
+    return { error: headerParsed.error.issues[0]?.message ?? "Revisa el encabezado." };
+  }
+
+  let itemsRaw: unknown;
+  try {
+    itemsRaw = JSON.parse(String(formData.get("items") ?? "[]"));
+  } catch {
+    return { error: "Detalle de gastos inválido." };
+  }
+  const itemsParsed = saveItemsSchema.safeParse({ items: itemsRaw });
+  if (!itemsParsed.success) {
+    return { error: itemsParsed.error.issues[0]?.message ?? "Revisa el detalle de gastos." };
+  }
+
+  const finalizeParsed = finalizeReportSchema.safeParse({
+    rut: formData.get("rut"),
+    signatureData: formData.get("signatureData"),
+    beneficiarioRut: formData.get("beneficiarioRut"),
+  });
+  if (!finalizeParsed.success) {
+    return { error: finalizeParsed.error.issues[0]?.message ?? "Falta firmar o ingresar el RUT." };
+  }
+  if (!isValidRut(finalizeParsed.data.rut)) {
+    return { error: "El RUT ingresado no es válido." };
+  }
+
+  const {
+    nombre,
+    apellido,
+    segundoApellido,
+    cargo,
+    fecha,
+    esParaOtraPersona,
+    beneficiarioNombre,
+    beneficiarioApellido,
+    beneficiarioSegundoApellido,
+    beneficiarioEmail,
+  } = headerParsed.data;
+
+  if (esParaOtraPersona && !isValidRut(finalizeParsed.data.beneficiarioRut)) {
+    return { error: "El RUT de la persona a nombre de quien se rinde no es válido." };
+  }
+
+  const attachmentCount = await prisma.attachment.count({ where: { reportId } });
+  if (attachmentCount === 0) {
+    return { error: "La rendición debe tener al menos un comprobante adjunto." };
+  }
+
+  const { items } = itemsParsed.data;
+  const totals = computeTotals(items);
+
+  await prisma.$transaction([
+    prisma.expenseItem.deleteMany({ where: { reportId } }),
+    prisma.expenseItem.createMany({
+      data: items.map((item) => ({
+        reportId,
+        glosa: item.glosa,
+        proveedor: item.proveedor,
+        tipoDocumento: item.tipoDocumento,
+        numeroDocumento: item.numeroDocumento,
+        montoTotal: item.montoTotal,
+      })),
+    }),
+    prisma.expenseReport.update({
+      where: { id: reportId },
+      data: {
+        nombre,
+        apellido,
+        segundoApellido,
+        cargo,
+        fecha: new Date(fecha),
+        totalRendido: totals.totalRendido,
+        montoReembolso: totals.montoReembolso,
+        rut: formatRut(finalizeParsed.data.rut),
+        signatureData: finalizeParsed.data.signatureData,
+        esParaOtraPersona,
+        beneficiarioNombre: esParaOtraPersona ? beneficiarioNombre : null,
+        beneficiarioApellido: esParaOtraPersona ? beneficiarioApellido : null,
+        beneficiarioSegundoApellido: esParaOtraPersona ? beneficiarioSegundoApellido : null,
+        beneficiarioRut: esParaOtraPersona ? formatRut(finalizeParsed.data.beneficiarioRut) : null,
+        beneficiarioEmail: esParaOtraPersona && beneficiarioEmail ? beneficiarioEmail : null,
+        // El estado (Enviada/Aprobada/Rechazada/Pagada) y sus fechas
+        // asociadas no cambian: esto es una corrección, no un nuevo ciclo.
+      },
+    }),
+  ]);
 
   revalidatePath(`/aprobaciones/${reportId}`);
   redirect(`/aprobaciones/${reportId}`);

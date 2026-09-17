@@ -3,10 +3,20 @@
 import { useRef, useState } from "react";
 import type { PointerEvent } from "react";
 
-export function SignaturePad({ onChange }: { onChange: (dataUrl: string) => void }) {
+export function SignaturePad({
+  onChange,
+  initialDataUrl,
+}: {
+  onChange: (dataUrl: string) => void;
+  initialDataUrl?: string;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const [hasSignature, setHasSignature] = useState(false);
+  // Si ya hay una firma guardada (ej. al editar una rendición), se muestra
+  // como imagen en vez del lienzo en blanco, para no obligar a re-firmar
+  // solo por corregir otro dato.
+  const [showExisting, setShowExisting] = useState(Boolean(initialDataUrl));
 
   function pointerPos(e: PointerEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current!;
@@ -55,6 +65,34 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string) => void
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setHasSignature(false);
     onChange("");
+  }
+
+  function changeSignature() {
+    setShowExisting(false);
+    clear();
+  }
+
+  if (showExisting && initialDataUrl) {
+    return (
+      <div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={initialDataUrl}
+          alt="Firma actual"
+          className="h-64 w-full rounded-md border border-slate-300 bg-white object-contain"
+        />
+        <div className="mt-2 flex items-center justify-between">
+          <p className="text-xs text-slate-500">Firma actual</p>
+          <button
+            type="button"
+            onClick={changeSignature}
+            className="text-xs font-medium text-slate-600 hover:text-slate-900"
+          >
+            Cambiar firma
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

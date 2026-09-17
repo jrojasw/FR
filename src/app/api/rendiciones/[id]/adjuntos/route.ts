@@ -22,10 +22,10 @@ export async function GET(
 
   const { id: reportId } = await ctx.params;
 
-  const report = await prisma.expenseReport.findFirst({
-    where: { id: reportId, userId: session.sub },
-  });
-  if (!report) return NextResponse.json({ error: "Rendición no encontrada" }, { status: 404 });
+  const report = await prisma.expenseReport.findFirst({ where: { id: reportId } });
+  if (!report || (report.userId !== session.sub && session.role !== "ADMIN")) {
+    return NextResponse.json({ error: "Rendición no encontrada" }, { status: 404 });
+  }
 
   const attachments = await prisma.attachment.findMany({
     where: { reportId },
@@ -45,10 +45,12 @@ export async function POST(
 
   const { id: reportId } = await ctx.params;
 
-  const report = await prisma.expenseReport.findFirst({
-    where: { id: reportId, userId: session.sub, status: "DRAFT" },
-  });
-  if (!report) return NextResponse.json({ error: "Rendición no encontrada" }, { status: 404 });
+  const report = await prisma.expenseReport.findFirst({ where: { id: reportId } });
+  const isOwnerDraft = report?.userId === session.sub && report?.status === "DRAFT";
+  const isAdmin = session.role === "ADMIN";
+  if (!report || (!isOwnerDraft && !isAdmin)) {
+    return NextResponse.json({ error: "Rendición no encontrada" }, { status: 404 });
+  }
 
   const existingCount = await prisma.attachment.count({ where: { reportId } });
 

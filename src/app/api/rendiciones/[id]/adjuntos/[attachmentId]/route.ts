@@ -13,10 +13,12 @@ export async function DELETE(
 
   const { id: reportId, attachmentId } = await ctx.params;
 
-  const report = await prisma.expenseReport.findFirst({
-    where: { id: reportId, userId: session.sub, status: "DRAFT" },
-  });
-  if (!report) return NextResponse.json({ error: "No permitido" }, { status: 404 });
+  const report = await prisma.expenseReport.findFirst({ where: { id: reportId } });
+  const isOwnerDraft = report?.userId === session.sub && report?.status === "DRAFT";
+  const isAdmin = session.role === "ADMIN";
+  if (!report || (!isOwnerDraft && !isAdmin)) {
+    return NextResponse.json({ error: "No permitido" }, { status: 404 });
+  }
 
   const attachment = await prisma.attachment.findFirst({ where: { id: attachmentId, reportId } });
   if (!attachment) return NextResponse.json({ error: "No encontrado" }, { status: 404 });

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRoleOrRegistryViewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -41,6 +42,22 @@ export default async function AprobacionDetailPage({
           report={report}
           actions={
             <>
+              {session.role === "ADMIN" && (
+                <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Corregir datos</h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Edita cualquier dato de esta rendición sin cambiar su estado.
+                    </p>
+                  </div>
+                  <Link
+                    href={`/aprobaciones/${report.id}/editar`}
+                    className="shrink-0 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    ✏️ Editar
+                  </Link>
+                </div>
+              )}
               {canReview && report.status === "SUBMITTED" && <ReviewForm reportId={report.id} />}
               {canManagePayment && (
                 <PaymentCertificateForm

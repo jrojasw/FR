@@ -19,6 +19,8 @@ type ItemRow = {
 
 type Attachment = { id: string; fileName: string; mimeType: string; kind: "PHOTO" | "DOCUMENT" };
 
+type SubmitAction = (reportId: string, formData: FormData) => Promise<{ error?: string } | undefined>;
+
 function emptyRow(): ItemRow {
   return { glosa: "", proveedor: "", tipoDocumento: "BOLETA", numeroDocumento: "", montoTotal: "" };
 }
@@ -34,6 +36,9 @@ export function ReportEditor({
   correlativo,
   initial,
   initialAttachments,
+  submitAction = finalizeReportAction,
+  submitLabel = "Enviar rendición",
+  submittingLabel = "Enviando…",
 }: {
   reportId: string;
   correlativo: number;
@@ -43,8 +48,20 @@ export function ReportEditor({
     segundoApellido: string;
     cargo: string;
     fecha: string;
+    rut?: string;
+    esParaOtraPersona?: boolean;
+    beneficiarioNombre?: string;
+    beneficiarioApellido?: string;
+    beneficiarioSegundoApellido?: string;
+    beneficiarioEmail?: string;
+    beneficiarioRut?: string;
+    signatureData?: string;
+    items?: { glosa: string; proveedor: string; tipoDocumento: ItemRow["tipoDocumento"]; numeroDocumento: string; montoTotal: string }[];
   };
   initialAttachments: Attachment[];
+  submitAction?: SubmitAction;
+  submitLabel?: string;
+  submittingLabel?: string;
 }) {
   const router = useRouter();
   const [nombre, setNombre] = useState(initial.nombre);
@@ -52,16 +69,22 @@ export function ReportEditor({
   const [segundoApellido, setSegundoApellido] = useState(initial.segundoApellido);
   const [cargo, setCargo] = useState(initial.cargo);
   const [fecha, setFecha] = useState(initial.fecha);
-  const [esParaOtraPersona, setEsParaOtraPersona] = useState(false);
-  const [beneficiarioNombre, setBeneficiarioNombre] = useState("");
-  const [beneficiarioApellido, setBeneficiarioApellido] = useState("");
-  const [beneficiarioSegundoApellido, setBeneficiarioSegundoApellido] = useState("");
-  const [beneficiarioEmailUsuario, setBeneficiarioEmailUsuario] = useState("");
-  const [beneficiarioEmailProveedor, setBeneficiarioEmailProveedor] = useState("");
-  const [beneficiarioRut, setBeneficiarioRut] = useState("");
-  const [items, setItems] = useState<ItemRow[]>([emptyRow()]);
-  const [rut, setRut] = useState("");
-  const [signatureData, setSignatureData] = useState("");
+  const [esParaOtraPersona, setEsParaOtraPersona] = useState(initial.esParaOtraPersona ?? false);
+  const [beneficiarioNombre, setBeneficiarioNombre] = useState(initial.beneficiarioNombre ?? "");
+  const [beneficiarioApellido, setBeneficiarioApellido] = useState(initial.beneficiarioApellido ?? "");
+  const [beneficiarioSegundoApellido, setBeneficiarioSegundoApellido] = useState(
+    initial.beneficiarioSegundoApellido ?? ""
+  );
+  const [beneficiarioEmailUsuario, setBeneficiarioEmailUsuario] = useState(
+    initial.beneficiarioEmail?.split("@")[0] ?? ""
+  );
+  const [beneficiarioEmailProveedor, setBeneficiarioEmailProveedor] = useState(
+    initial.beneficiarioEmail?.split("@")[1] ?? ""
+  );
+  const [beneficiarioRut, setBeneficiarioRut] = useState(initial.beneficiarioRut ?? "");
+  const [items, setItems] = useState<ItemRow[]>(initial.items?.length ? initial.items : [emptyRow()]);
+  const [rut, setRut] = useState(initial.rut ?? "");
+  const [signatureData, setSignatureData] = useState(initial.signatureData ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -120,11 +143,11 @@ export function ReportEditor({
       return;
     }
     if (!signatureData) {
-      failWith("Falta tu firma.", firmaRef);
+      failWith("Falta la firma.", firmaRef);
       return;
     }
     if (!rut.trim()) {
-      failWith("Ingresa tu RUT.", firmaRef);
+      failWith("Ingresa el RUT.", firmaRef);
       return;
     }
     if (esParaOtraPersona && !beneficiarioRut.trim()) {
@@ -154,7 +177,7 @@ export function ReportEditor({
     formData.set("signatureData", signatureData);
 
     startTransition(async () => {
-      const result = await finalizeReportAction(reportId, formData);
+      const result = await submitAction(reportId, formData);
       if (result?.error) {
         const ref = /adjunt|comprobante/i.test(result.error) ? adjuntosRef : undefined;
         failWith(result.error, ref);
@@ -509,19 +532,23 @@ export function ReportEditor({
           Toma fotos de tus boletas/facturas, súbelas desde tu galería, o adjunta un documento digital.
         </p>
         <div className="mt-4">
-          <AttachmentUploader reportId={reportId} initialAttachments={initialAttachments} />
+          <AttachmentUploader
+            reportId={reportId}
+            initialAttachments={initialAttachments}
+            allowMobileHandoff={submitAction === finalizeReportAction}
+          />
         </div>
       </section>
 
       <section ref={firmaRef} className="scroll-mt-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-900">Firma</h2>
         <div className="mt-4 max-w-xl">
-          <SignaturePad onChange={setSignatureData} />
+          <SignaturePad onChange={setSignatureData} initialDataUrl={initial.signatureData} />
         </div>
         <div className="mt-4 flex flex-wrap gap-4">
           <div className="max-w-xs">
             <label htmlFor="rut" className="block text-sm font-medium text-slate-700">
-              {esParaOtraPersona ? "Tu RUT (quien rinde)" : "RUT"}
+              {esParaOtraPersona ? "RUT (quien rinde)" : "RUT"}
             </label>
             <input
               id="rut"
@@ -554,7 +581,7 @@ export function ReportEditor({
         disabled={isPending}
         className="w-full rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 disabled:opacity-60 sm:w-auto"
       >
-        {isPending ? "Enviando…" : "Enviar rendición"}
+        {isPending ? submittingLabel : submitLabel}
       </button>
     </div>
   );

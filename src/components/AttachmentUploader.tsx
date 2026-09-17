@@ -15,9 +15,14 @@ type Attachment = {
 export function AttachmentUploader({
   reportId,
   initialAttachments,
+  allowMobileHandoff = true,
 }: {
   reportId: string;
   initialAttachments: Attachment[];
+  // El QR de "usar el celular" solo funciona para el dueño de la rendición
+  // mientras sigue en Borrador (ver createMobileUploadLinkAction); se oculta
+  // cuando el Administrador está corrigiendo una rendición ajena ya enviada.
+  allowMobileHandoff?: boolean;
 }) {
   const [attachments, setAttachments] = useState<Attachment[]>(initialAttachments);
   const [error, setError] = useState<string | null>(null);
@@ -175,14 +180,16 @@ export function AttachmentUploader({
           📄 Subir documento
         </button>
         <DocumentScanner onScanned={(file) => handleFiles([file])} />
-        <button
-          type="button"
-          disabled={mobileLinkLoading}
-          onClick={openMobileLink}
-          className="hidden rounded-md border border-[#004b93] bg-[#004b93] px-3 py-2 text-sm font-medium text-white hover:bg-[#003a73] disabled:opacity-60 md:inline-flex md:items-center md:gap-1"
-        >
-          📱 {mobileLinkLoading ? "Generando enlace…" : "Usar el celular"}
-        </button>
+        {allowMobileHandoff && (
+          <button
+            type="button"
+            disabled={mobileLinkLoading}
+            onClick={openMobileLink}
+            className="hidden rounded-md border border-[#004b93] bg-[#004b93] px-3 py-2 text-sm font-medium text-white hover:bg-[#003a73] disabled:opacity-60 md:inline-flex md:items-center md:gap-1"
+          >
+            📱 {mobileLinkLoading ? "Generando enlace…" : "Usar el celular"}
+          </button>
+        )}
       </div>
 
       {mobileLinkError ? <p className="mt-1 text-sm text-red-600">{mobileLinkError}</p> : null}
