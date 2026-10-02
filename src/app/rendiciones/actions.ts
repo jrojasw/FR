@@ -226,5 +226,5 @@ export async function finalizeReportAction(
     `,
   });
 
-  redirect(`/rendiciones/${reportId}`);
+  redirect(`/rendiciones/${reportId}?enviado=1`);
 }

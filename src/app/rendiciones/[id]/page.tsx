@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { toDateInputValue } from "@/lib/format";
 import { ReportEditor } from "@/components/ReportEditor";
 import { ReportView } from "@/components/ReportView";
+import { SubmittedNotice } from "@/components/SubmittedNotice";
 import { deleteDraftReportAction } from "../actions";
 
 export default async function RendicionDetailPage({
@@ -28,6 +29,7 @@ export default async function RendicionDetailPage({
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8">
+      <SubmittedNotice />
       <h1 className="text-2xl font-semibold text-slate-900">Rendición N° {report.correlativo}</h1>
 
       <div className="mt-6">

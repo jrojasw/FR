@@ -36,5 +36,9 @@ export async function GET(
     60 * 60 * 2
   );
 
-  return NextResponse.redirect(new URL(`/rendiciones/${claims.reportId}`, baseUrl));
+  // Va a una vista acotada a solo subir fotos, no al formulario completo:
+  // ese formulario recién se guarda al enviar la rendición, así que abrirlo
+  // aquí mostraría en blanco lo que el trabajador ya escribió en el
+  // computador, como si se hubiera perdido.
+  return NextResponse.redirect(new URL(`/rendiciones/${claims.reportId}/subir`, baseUrl));
 }
