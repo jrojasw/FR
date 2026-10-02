@@ -14,14 +14,21 @@ export async function GET(
 ) {
   const { ticket } = await ctx.params;
 
+  // request.url resuelve contra la dirección interna del contenedor (p.ej.
+  // 0.0.0.0:8080) detrás del proxy de Railway, no contra el dominio público,
+  // así que los redirects se arman con el mismo patrón baseUrl usado en el
+  // resto de la app.
+  const baseUrl =
+    process.env.APP_URL || `${request.headers.get("x-forwarded-proto") ?? "http"}://${request.headers.get("host")}`;
+
   const claims = await verifyUploadTicket(ticket);
   if (!claims) {
-    return NextResponse.redirect(new URL("/login?error=enlace-vencido", request.url));
+    return NextResponse.redirect(new URL("/login?error=enlace-vencido", baseUrl));
   }
 
   const user = await prisma.user.findUnique({ where: { id: claims.userId } });
   if (!user || !user.active) {
-    return NextResponse.redirect(new URL("/login?error=enlace-vencido", request.url));
+    return NextResponse.redirect(new URL("/login?error=enlace-vencido", baseUrl));
   }
 
   await createSession(
@@ -29,5 +36,5 @@ export async function GET(
     60 * 60 * 2
   );
 
-  return NextResponse.redirect(new URL(`/rendiciones/${claims.reportId}`, request.url));
+  return NextResponse.redirect(new URL(`/rendiciones/${claims.reportId}`, baseUrl));
 }
