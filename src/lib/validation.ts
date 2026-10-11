@@ -55,7 +55,7 @@ export const createReportSchema = z
 export const itemRowSchema = z.object({
   glosa: z.string().trim().min(2, "Ingresa una glosa (ej: materiales, alimentación)"),
   proveedor: z.string().trim().min(2, "Proveedor muy corto"),
-  tipoDocumento: z.enum(["BOLETA", "FACTURA", "RECIBO"]),
+  tipoDocumento: z.enum(["BOLETA", "FACTURA", "RECIBO", "RETIRO"]),
   numeroDocumento: z.string().trim().min(1, "N° documento requerido"),
   montoTotal: z.coerce.number().positive("Debe ser mayor a 0"),
 });

@@ -29,6 +29,7 @@ export const documentTypeLabels: Record<string, string> = {
   BOLETA: "Boleta",
   FACTURA: "Factura",
   RECIBO: "Recibo",
+  RETIRO: "Retiro",
 };
 
 export const reportStatusLabels: Record<string, string> = {

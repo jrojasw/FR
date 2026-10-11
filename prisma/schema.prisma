@@ -28,6 +28,7 @@ enum DocumentType {
   BOLETA
   FACTURA
   RECIBO
+  RETIRO
 }
 
 enum AttachmentKind {

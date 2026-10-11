@@ -12,7 +12,7 @@ import { formatRut } from "@/lib/rut";
 type ItemRow = {
   glosa: string;
   proveedor: string;
-  tipoDocumento: "BOLETA" | "FACTURA" | "RECIBO";
+  tipoDocumento: "BOLETA" | "FACTURA" | "RECIBO" | "RETIRO";
   numeroDocumento: string;
   montoTotal: string;
 };
