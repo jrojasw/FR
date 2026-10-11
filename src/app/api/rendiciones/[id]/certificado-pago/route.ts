@@ -19,9 +19,11 @@ export async function POST(
 
   const { id: reportId } = await ctx.params;
 
-  const report = await prisma.expenseReport.findFirst({ where: { id: reportId, status: "APPROVED" } });
+  const report = await prisma.expenseReport.findFirst({
+    where: { id: reportId, status: { in: ["APPROVED", "PAID"] } },
+  });
   if (!report) {
-    return NextResponse.json({ error: "La rendición no está aprobada o no existe." }, { status: 404 });
+    return NextResponse.json({ error: "La rendición no está aprobada ni pagada, o no existe." }, { status: 404 });
   }
 
   const formData = await request.formData();

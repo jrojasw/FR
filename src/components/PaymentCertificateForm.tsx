@@ -66,6 +66,28 @@ export function PaymentCertificateForm({
             </a>
           ) : null}
         </p>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf,image/*"
+          className="hidden"
+          onChange={(e) => handleFile(e.target.files?.[0])}
+        />
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => fileInputRef.current?.click()}
+          className="mt-3 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        >
+          {uploading ? "Subiendo…" : "Reemplazar certificado"}
+        </button>
+        <p className="mt-1 text-xs text-slate-500">
+          Solo corrige el archivo guardado (se usará en el próximo PDF descargado); no reenvía
+          correos automáticamente.
+        </p>
+
+        {uploadError ? <p className="mt-2 text-sm text-red-600">{uploadError}</p> : null}
       </section>
     );
   }
