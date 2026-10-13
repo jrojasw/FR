@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { DragEvent } from "react";
 import { MAX_ATTACHMENTS } from "@/lib/reports";
 import { DocumentScanner } from "@/components/DocumentScanner";
 import { createMobileUploadLinkAction } from "@/app/rendiciones/actions";
@@ -28,6 +29,8 @@ export function AttachmentUploader({
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<Attachment | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const dragCounter = useRef(0);
 
   const [mobileLink, setMobileLink] = useState<{ url: string; qrDataUrl: string } | null>(null);
   const [mobileLinkLoading, setMobileLinkLoading] = useState(false);
@@ -116,6 +119,31 @@ export function AttachmentUploader({
     }
   }
 
+  function handleDragEnter(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    if (e.dataTransfer.types.includes("Files")) {
+      dragCounter.current += 1;
+      setDragActive(true);
+    }
+  }
+
+  function handleDragOver(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+  }
+
+  function handleDragLeave(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounter.current = Math.max(0, dragCounter.current - 1);
+    if (dragCounter.current === 0) setDragActive(false);
+  }
+
+  function handleDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setDragActive(false);
+    handleFiles(e.dataTransfer.files);
+  }
+
   async function handleDelete(id: string) {
     setError(null);
     const res = await fetch(`/api/rendiciones/${reportId}/adjuntos/${id}`, { method: "DELETE" });
@@ -128,7 +156,16 @@ export function AttachmentUploader({
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2">
+      <div
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`rounded-md border-2 border-dashed p-3 transition-colors ${
+          dragActive ? "border-[#004b93] bg-blue-50" : "border-transparent"
+        }`}
+      >
+        <div className="flex flex-wrap gap-2">
         <input
           ref={cameraInputRef}
           type="file"
@@ -190,6 +227,10 @@ export function AttachmentUploader({
             📱 {mobileLinkLoading ? "Generando enlace…" : "Usar el celular"}
           </button>
         )}
+        </div>
+        <p className="mt-2 hidden text-xs text-slate-400 sm:block">
+          {dragActive ? "Suelta aquí para subir" : "…o arrastra y suelta archivos aquí"}
+        </p>
       </div>
 
       {mobileLinkError ? <p className="mt-1 text-sm text-red-600">{mobileLinkError}</p> : null}

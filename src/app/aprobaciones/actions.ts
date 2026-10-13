@@ -141,7 +141,7 @@ export async function sendPaymentCertificateAction(
   try {
     const pdfBuffer = await buildReportPdf({ ...report, status: "PAID", paidAt });
     await sendEmail({
-      to: [getApproverEmail(), getAdminEmail()],
+      to: [getApproverEmail(), getAdminEmail(), "contabilidad@copayapunos.cl"],
       subject: `Expediente en PDF - Rendición N° ${report.correlativo} - ${report.nombre} ${report.apellido} ${report.segundoApellido}`,
       html: `
         <p>Se adjunta en PDF el expediente completo de la rendición N° ${report.correlativo} de ${report.nombre} ${report.apellido} ${report.segundoApellido} (${report.cargo})${porTercero}, con firma y los documentos adjuntos, para imprimir y guardar en carpeta física.</p>

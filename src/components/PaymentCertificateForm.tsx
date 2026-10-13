@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import type { DragEvent } from "react";
 import {
   sendPaymentCertificateAction,
   type SendPaymentCertificateState,
@@ -20,6 +21,8 @@ export function PaymentCertificateForm({
   const [fileName, setFileName] = useState(initialFileName);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const dragCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const boundAction = sendPaymentCertificateAction.bind(null, reportId);
@@ -49,6 +52,31 @@ export function PaymentCertificateForm({
     }
   }
 
+  function handleDragEnter(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    if (e.dataTransfer.types.includes("Files")) {
+      dragCounter.current += 1;
+      setDragActive(true);
+    }
+  }
+
+  function handleDragOver(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+  }
+
+  function handleDragLeave(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounter.current = Math.max(0, dragCounter.current - 1);
+    if (dragCounter.current === 0) setDragActive(false);
+  }
+
+  function handleDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setDragActive(false);
+    handleFile(e.dataTransfer.files[0]);
+  }
+
   if (alreadyPaid) {
     return (
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -67,21 +95,34 @@ export function PaymentCertificateForm({
           ) : null}
         </p>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/pdf,image/*"
-          className="hidden"
-          onChange={(e) => handleFile(e.target.files?.[0])}
-        />
-        <button
-          type="button"
-          disabled={uploading}
-          onClick={() => fileInputRef.current?.click()}
-          className="mt-3 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        <div
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`mt-3 rounded-md border-2 border-dashed p-3 transition-colors ${
+            dragActive ? "border-[#004b93] bg-blue-50" : "border-transparent"
+          }`}
         >
-          {uploading ? "Subiendo…" : "Reemplazar certificado"}
-        </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf,image/*"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0])}
+          />
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            {uploading ? "Subiendo…" : "Reemplazar certificado"}
+          </button>
+          <p className="mt-1 hidden text-xs text-slate-400 sm:block">
+            {dragActive ? "Suelta aquí para subir" : "…o arrastra y suelta el archivo aquí"}
+          </p>
+        </div>
         <p className="mt-1 text-xs text-slate-500">
           Solo corrige el archivo guardado (se usará en el próximo PDF descargado); no reenvía
           correos automáticamente.
@@ -108,28 +149,41 @@ export function PaymentCertificateForm({
         onChange={(e) => handleFile(e.target.files?.[0])}
       />
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          disabled={uploading}
-          onClick={() => fileInputRef.current?.click()}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-        >
-          {fileName ? "Reemplazar archivo" : "Subir certificado"}
-        </button>
-        {fileName ? (
-          <a
-            href={`/api/rendiciones/${reportId}/certificado-pago`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-sm text-slate-600 underline"
+      <div
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`mt-4 rounded-md border-2 border-dashed p-3 transition-colors ${
+          dragActive ? "border-[#004b93] bg-blue-50" : "border-transparent"
+        }`}
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
-            {fileName}
-          </a>
-        ) : (
-          <span className="text-sm text-slate-400">Sin certificado cargado</span>
-        )}
-        {uploading ? <span className="text-sm text-slate-400">Subiendo…</span> : null}
+            {fileName ? "Reemplazar archivo" : "Subir certificado"}
+          </button>
+          {fileName ? (
+            <a
+              href={`/api/rendiciones/${reportId}/certificado-pago`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-slate-600 underline"
+            >
+              {fileName}
+            </a>
+          ) : (
+            <span className="text-sm text-slate-400">Sin certificado cargado</span>
+          )}
+          {uploading ? <span className="text-sm text-slate-400">Subiendo…</span> : null}
+        </div>
+        <p className="mt-1 hidden text-xs text-slate-400 sm:block">
+          {dragActive ? "Suelta aquí para subir" : "…o arrastra y suelta el archivo aquí"}
+        </p>
       </div>
 
       {uploadError ? <p className="mt-2 text-sm text-red-600">{uploadError}</p> : null}
