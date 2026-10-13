@@ -22,6 +22,7 @@ export function PaymentCertificateForm({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const dragCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,6 +78,35 @@ export function PaymentCertificateForm({
     handleFile(e.dataTransfer.files[0]);
   }
 
+  // Al reemplazar un certificado ya enviado, el archivo se deja pendiente
+  // en vez de subirlo de inmediato: hay que confirmar con "Aceptar
+  // reemplazo" para no corregir un documento ya entregado por error.
+  function stageFile(file: File | undefined) {
+    if (!file) return;
+    setUploadError(null);
+    setPendingFile(file);
+  }
+
+  function handleDropStage(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setDragActive(false);
+    stageFile(e.dataTransfer.files[0]);
+  }
+
+  function cancelReplace() {
+    setPendingFile(null);
+    setUploadError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function confirmReplace() {
+    if (!pendingFile) return;
+    await handleFile(pendingFile);
+    setPendingFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
   if (alreadyPaid) {
     return (
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -99,7 +129,7 @@ export function PaymentCertificateForm({
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          onDrop={handleDropStage}
           className={`mt-3 rounded-md border-2 border-dashed p-3 transition-colors ${
             dragActive ? "border-[#004b93] bg-blue-50" : "border-transparent"
           }`}
@@ -109,7 +139,7 @@ export function PaymentCertificateForm({
             type="file"
             accept="application/pdf,image/*"
             className="hidden"
-            onChange={(e) => handleFile(e.target.files?.[0])}
+            onChange={(e) => stageFile(e.target.files?.[0])}
           />
           <button
             type="button"
@@ -117,12 +147,35 @@ export function PaymentCertificateForm({
             onClick={() => fileInputRef.current?.click()}
             className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
-            {uploading ? "Subiendo…" : "Reemplazar certificado"}
+            Reemplazar certificado
           </button>
           <p className="mt-1 hidden text-xs text-slate-400 sm:block">
             {dragActive ? "Suelta aquí para subir" : "…o arrastra y suelta el archivo aquí"}
           </p>
         </div>
+
+        {pendingFile ? (
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+            <span className="text-sm text-amber-800">Nuevo archivo: {pendingFile.name}</span>
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={confirmReplace}
+              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60"
+            >
+              {uploading ? "Subiendo…" : "Aceptar reemplazo"}
+            </button>
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={cancelReplace}
+              className="text-sm text-slate-500 hover:text-slate-700 disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+          </div>
+        ) : null}
+
         <p className="mt-1 text-xs text-slate-500">
           Solo corrige el archivo guardado (se usará en el próximo PDF descargado); no reenvía
           correos automáticamente.
