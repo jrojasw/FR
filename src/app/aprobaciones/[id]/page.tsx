@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { ReportView } from "@/components/ReportView";
 import { ReviewForm } from "@/components/ReviewForm";
 import { PaymentCertificateForm } from "@/components/PaymentCertificateForm";
+import { ResendBeneficiaryNoticeButton } from "@/components/ResendBeneficiaryNoticeButton";
 
 export default async function AprobacionDetailPage({
   params,
@@ -66,6 +67,15 @@ export default async function AprobacionDetailPage({
                   alreadyPaid={report.status === "PAID"}
                 />
               )}
+              {session.role === "ADMIN" &&
+                report.esParaOtraPersona &&
+                report.beneficiarioEmail &&
+                (report.status === "APPROVED" || report.status === "REJECTED" || report.status === "PAID") && (
+                  <ResendBeneficiaryNoticeButton
+                    reportId={report.id}
+                    beneficiarioEmail={report.beneficiarioEmail}
+                  />
+                )}
             </>
           }
         />

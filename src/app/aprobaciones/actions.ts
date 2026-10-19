@@ -302,3 +302,55 @@ export async function adminUpdateReportAction(
   revalidatePath(`/aprobaciones/${reportId}`);
   redirect(`/aprobaciones/${reportId}`);
 }
+
+export type ResendBeneficiaryNoticeState = {
+  error?: string;
+  success?: boolean;
+};
+
+// Reenvía manualmente el aviso de estado (aprobada/rechazada/pagada) a la
+// persona a nombre de quien se rindió, por si no le llegó el correo
+// automático la primera vez.
+export async function resendBeneficiaryNoticeAction(
+  reportId: string
+): Promise<ResendBeneficiaryNoticeState> {
+  await requireRole("ADMIN");
+
+  const report = await prisma.expenseReport.findFirst({
+    where: { id: reportId, status: { in: ["APPROVED", "REJECTED", "PAID"] } },
+  });
+  if (!report) return { error: "Rendición no encontrada." };
+  if (!report.esParaOtraPersona || !report.beneficiarioEmail) {
+    return { error: "Esta rendición no tiene un beneficiario con correo registrado." };
+  }
+
+  const h = await headers();
+  const baseUrl = process.env.APP_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
+  const rendidoPorLine = `<p>Rendición ingresada por ${report.nombre} ${report.apellido} ${report.segundoApellido} a nombre de ${report.beneficiarioNombre} ${report.beneficiarioApellido} ${report.beneficiarioSegundoApellido}.</p>`;
+
+  if (report.status === "PAID") {
+    await sendEmail({
+      to: report.beneficiarioEmail,
+      subject: `Tu rendición N° ${report.correlativo} fue pagada`,
+      html: `
+        <p>Tu rendición N° ${report.correlativo} (${formatCurrency(report.totalRendido.toString())}) ya fue pagada.</p>
+        ${rendidoPorLine}
+        <p><a href="${baseUrl}/rendiciones/${reportId}">Ver detalle</a></p>
+      `,
+    });
+  } else {
+    const decisionLabel = report.status === "APPROVED" ? "aprobada" : "rechazada";
+    await sendEmail({
+      to: report.beneficiarioEmail,
+      subject: `Tu rendición N° ${report.correlativo} fue ${decisionLabel}`,
+      html: `
+        <p>Tu rendición N° ${report.correlativo} (${formatCurrency(report.totalRendido.toString())}) fue <strong>${decisionLabel}</strong>.</p>
+        ${rendidoPorLine}
+        ${report.reviewComment ? `<p>Comentario: ${report.reviewComment}</p>` : ""}
+        <p><a href="${baseUrl}/rendiciones/${reportId}">Ver detalle</a></p>
+      `,
+    });
+  }
+
+  return { success: true };
+}
