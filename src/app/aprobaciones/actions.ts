@@ -51,11 +51,23 @@ export async function reviewReportAction(
   const baseUrl = process.env.APP_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
   const decisionLabel = parsed.data.decision === "APPROVED" ? "aprobada" : "rechazada";
 
+  // Si la rendición es a nombre de otra persona, esa persona también recibe
+  // las notificaciones de estado, no solo quien la ingresó, y el correo le
+  // aclara quién la rindió a su nombre.
+  const statusRecipients =
+    report.esParaOtraPersona && report.beneficiarioEmail
+      ? [report.user.email, report.beneficiarioEmail]
+      : report.user.email;
+  const rendidoPorLine = report.esParaOtraPersona
+    ? `<p>Rendición ingresada por ${report.nombre} ${report.apellido} ${report.segundoApellido} a nombre de ${report.beneficiarioNombre} ${report.beneficiarioApellido} ${report.beneficiarioSegundoApellido}.</p>`
+    : "";
+
   await sendEmail({
-    to: report.user.email,
+    to: statusRecipients,
     subject: `Tu rendición N° ${report.correlativo} fue ${decisionLabel}`,
     html: `
       <p>Tu rendición N° ${report.correlativo} (${formatCurrency(report.totalRendido.toString())}) fue <strong>${decisionLabel}</strong>.</p>
+      ${rendidoPorLine}
       ${parsed.data.reviewComment ? `<p>Comentario: ${parsed.data.reviewComment}</p>` : ""}
       <p><a href="${baseUrl}/rendiciones/${reportId}">Ver detalle</a></p>
     `,
@@ -129,11 +141,20 @@ export async function sendPaymentCertificateAction(
     data: { status: "PAID", paidAt, paidById: session.sub },
   });
 
+  const paidRecipients =
+    report.esParaOtraPersona && report.beneficiarioEmail
+      ? [report.user.email, report.beneficiarioEmail]
+      : report.user.email;
+  const rendidoPorLine = report.esParaOtraPersona
+    ? `<p>Rendición ingresada por ${report.nombre} ${report.apellido} ${report.segundoApellido} a nombre de ${report.beneficiarioNombre} ${report.beneficiarioApellido} ${report.beneficiarioSegundoApellido}.</p>`
+    : "";
+
   await sendEmail({
-    to: report.user.email,
+    to: paidRecipients,
     subject: `Tu rendición N° ${report.correlativo} fue pagada`,
     html: `
       <p>Tu rendición N° ${report.correlativo} (${formatCurrency(report.totalRendido.toString())}) ya fue pagada.</p>
+      ${rendidoPorLine}
       <p><a href="${baseUrl}/rendiciones/${reportId}">Ver detalle</a></p>
     `,
   });
