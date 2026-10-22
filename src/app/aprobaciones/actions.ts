@@ -13,6 +13,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { buildReportPdf } from "@/lib/pdf-export";
 import { computeTotals } from "@/lib/reports";
 import { isValidRut, formatRut } from "@/lib/rut";
+import { sendReportUpdatedNotice } from "@/lib/report-notifications";
 
 export type ReviewState = {
   error?: string;
@@ -301,6 +302,12 @@ export async function adminUpdateReportAction(
       },
     }),
   ]);
+
+  // Si ya estaba Pagada, el expediente y el aviso al beneficiario ya habían
+  // salido antes de esta corrección: se reenvían actualizados.
+  if (report.status === "PAID") {
+    await sendReportUpdatedNotice(reportId, "corrección de datos");
+  }
 
   revalidatePath(`/aprobaciones/${reportId}`);
   redirect(`/aprobaciones/${reportId}`);

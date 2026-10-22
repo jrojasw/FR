@@ -273,7 +273,9 @@ export function PaymentCertificateForm({
           <h3 className="text-sm font-semibold text-slate-900">Comprobantes de pago adicionales</h3>
           <p className="mt-1 text-xs text-slate-500">
             Para cuando el certificado de arriba tenía un error y ya se hizo otra transferencia
-            para corregirlo: agrega el comprobante nuevo sin perder el registro del original.
+            para corregirlo: agrega el comprobante nuevo sin perder el registro del original. Al
+            agregarlo se reenvía el expediente actualizado (y el aviso al beneficiario, si
+            corresponde).
           </p>
 
           {additionalCertificates.length > 0 ? (

@@ -50,6 +50,9 @@ export default async function AprobacionDetailPage({
                     <h2 className="text-lg font-semibold text-slate-900">Corregir datos</h2>
                     <p className="mt-1 text-sm text-slate-500">
                       Edita cualquier dato de esta rendición sin cambiar su estado.
+                      {report.status === "PAID"
+                        ? " Al guardar se reenvía el expediente actualizado (y el aviso al beneficiario, si corresponde)."
+                        : ""}
                     </p>
                   </div>
                   <Link

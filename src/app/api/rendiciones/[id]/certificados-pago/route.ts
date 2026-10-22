@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { saveAttachmentFile } from "@/lib/storage";
+import { sendReportUpdatedNotice } from "@/lib/report-notifications";
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic"]);
@@ -55,6 +56,8 @@ export async function POST(
   const created = await prisma.paymentCertificate.create({
     data: { reportId, fileName: file.name, filePath: relativePath },
   });
+
+  await sendReportUpdatedNotice(reportId, "se agregó un comprobante de pago adicional");
 
   return NextResponse.json({ id: created.id, fileName: created.fileName });
 }
