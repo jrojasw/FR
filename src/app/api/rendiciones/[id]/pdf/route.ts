@@ -16,7 +16,7 @@ export async function GET(
 
   const report = await prisma.expenseReport.findFirst({
     where: { id: reportId },
-    include: { items: true, attachments: true },
+    include: { items: true, attachments: true, additionalPaymentCertificates: true },
   });
   if (!report || report.status === "DRAFT") {
     return new NextResponse("No encontrado", { status: 404 });

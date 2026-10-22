@@ -35,6 +35,7 @@ export type ReportViewData = {
   paidAt: Date | null;
   paymentCertificateName: string | null;
   paidBy?: { name: string | null; email: string } | null;
+  additionalPaymentCertificates?: { id: string; fileName: string }[];
   items: {
     id: string;
     glosa: string;
@@ -247,6 +248,24 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
                   >
                     {report.paymentCertificateName}
                   </a>
+                </dd>
+              </div>
+            ) : null}
+            {report.additionalPaymentCertificates && report.additionalPaymentCertificates.length > 0 ? (
+              <div>
+                <dt className="text-slate-500">Comprobantes de pago adicionales</dt>
+                <dd className="mt-1 space-y-1">
+                  {report.additionalPaymentCertificates.map((cert) => (
+                    <a
+                      key={cert.id}
+                      href={`/api/rendiciones/${report.id}/certificados-pago/${cert.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block font-medium text-slate-900 underline"
+                    >
+                      {cert.fileName}
+                    </a>
+                  ))}
                 </dd>
               </div>
             ) : null}

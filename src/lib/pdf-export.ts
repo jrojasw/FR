@@ -46,6 +46,10 @@ type ReportForPdf = {
   }[];
   paymentCertificatePath: string | null;
   paymentCertificateName: string | null;
+  additionalPaymentCertificates: {
+    fileName: string;
+    filePath: string;
+  }[];
 };
 
 const CERTIFICATE_MIME_TYPES: Record<string, string> = {
@@ -398,6 +402,21 @@ export async function buildReportPdf(report: ReportForPdf): Promise<Buffer> {
     await embedAttachment(doc, pdfAttachmentsToAppend, {
       fileName,
       filePath: report.paymentCertificatePath,
+      mimeType,
+      isImage: mimeType.startsWith("image/"),
+    });
+  }
+
+  // Comprobantes adicionales (correcciones de pago ya hechas): van después
+  // del certificado original, cada uno con su propio nombre para
+  // distinguirlos.
+  for (const certificate of report.additionalPaymentCertificates) {
+    const mimeType = guessMimeTypeFromFileName(certificate.fileName);
+    doc.addPage();
+    sectionHeading(doc, "Comprobante de pago adicional");
+    await embedAttachment(doc, pdfAttachmentsToAppend, {
+      fileName: certificate.fileName,
+      filePath: certificate.filePath,
       mimeType,
       isImage: mimeType.startsWith("image/"),
     });

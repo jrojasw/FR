@@ -24,6 +24,7 @@ export default async function AprobacionDetailPage({
       reviewer: { select: { name: true, email: true } },
       paidBy: { select: { name: true, email: true } },
       user: { select: { name: true, email: true } },
+      additionalPaymentCertificates: { orderBy: { createdAt: "asc" } },
     },
   });
 
@@ -65,6 +66,7 @@ export default async function AprobacionDetailPage({
                   reportId={report.id}
                   initialFileName={report.paymentCertificateName}
                   alreadyPaid={report.status === "PAID"}
+                  initialAdditionalCertificates={report.additionalPaymentCertificates}
                 />
               )}
               {session.role === "ADMIN" &&

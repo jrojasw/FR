@@ -103,7 +103,7 @@ export async function sendPaymentCertificateAction(
 
   const report = await prisma.expenseReport.findFirst({
     where: { id: reportId, status: "APPROVED" },
-    include: { user: true, items: true, attachments: true },
+    include: { user: true, items: true, attachments: true, additionalPaymentCertificates: true },
   });
   if (!report) return { error: "Rendición no encontrada o no está aprobada." };
   if (!report.paymentCertificatePath) {

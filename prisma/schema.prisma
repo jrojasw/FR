@@ -121,8 +121,27 @@ model ExpenseReport {
   items       ExpenseItem[]
   attachments Attachment[]
 
+  // Comprobantes de pago adicionales: para cuando el primer certificado
+  // tenía un error y ya se hizo otra transferencia para corregirlo, sin
+  // perder el registro del comprobante original.
+  additionalPaymentCertificates PaymentCertificate[]
+
   @@index([userId])
   @@index([status])
+}
+
+// Comprobante de pago adicional (correcciones después de una transferencia
+// ya hecha). El primer certificado sigue en paymentCertificatePath/Name.
+model PaymentCertificate {
+  id        String   @id @default(cuid())
+  fileName  String
+  filePath  String
+  createdAt DateTime @default(now())
+
+  report   ExpenseReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  reportId String
+
+  @@index([reportId])
 }
 
 // Línea de detalle: Glosa / Proveedor / Tipo documento / N° documento / Monto Total

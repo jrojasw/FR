@@ -9,14 +9,18 @@ import {
 
 const initialState: SendPaymentCertificateState = {};
 
+type AdditionalCertificate = { id: string; fileName: string };
+
 export function PaymentCertificateForm({
   reportId,
   initialFileName,
   alreadyPaid,
+  initialAdditionalCertificates = [],
 }: {
   reportId: string;
   initialFileName: string | null;
   alreadyPaid: boolean;
+  initialAdditionalCertificates?: AdditionalCertificate[];
 }) {
   const [fileName, setFileName] = useState(initialFileName);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -25,6 +29,19 @@ export function PaymentCertificateForm({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const dragCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Comprobantes adicionales: para cuando el certificado ya enviado tenía un
+  // error y ya se hizo otra transferencia para corregirlo. Se agregan, no
+  // reemplazan al original.
+  const [additionalCertificates, setAdditionalCertificates] = useState<AdditionalCertificate[]>(
+    initialAdditionalCertificates
+  );
+  const [pendingAdditionalFile, setPendingAdditionalFile] = useState<File | null>(null);
+  const [addingAdditional, setAddingAdditional] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [dragActiveAdd, setDragActiveAdd] = useState(false);
+  const dragCounterAdd = useRef(0);
+  const additionalFileInputRef = useRef<HTMLInputElement>(null);
 
   const boundAction = sendPaymentCertificateAction.bind(null, reportId);
   const [state, formAction, pending] = useActionState(boundAction, initialState);
@@ -107,6 +124,75 @@ export function PaymentCertificateForm({
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  function stageAdditionalFile(file: File | undefined) {
+    if (!file) return;
+    setAddError(null);
+    setPendingAdditionalFile(file);
+  }
+
+  function handleDragEnterAdd(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    if (e.dataTransfer.types.includes("Files")) {
+      dragCounterAdd.current += 1;
+      setDragActiveAdd(true);
+    }
+  }
+
+  function handleDragLeaveAdd(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounterAdd.current = Math.max(0, dragCounterAdd.current - 1);
+    if (dragCounterAdd.current === 0) setDragActiveAdd(false);
+  }
+
+  function handleDropAdd(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounterAdd.current = 0;
+    setDragActiveAdd(false);
+    stageAdditionalFile(e.dataTransfer.files[0]);
+  }
+
+  function cancelAddAdditional() {
+    setPendingAdditionalFile(null);
+    setAddError(null);
+    if (additionalFileInputRef.current) additionalFileInputRef.current.value = "";
+  }
+
+  async function confirmAddAdditional() {
+    if (!pendingAdditionalFile) return;
+    setAddError(null);
+    setAddingAdditional(true);
+    const formData = new FormData();
+    formData.set("file", pendingAdditionalFile);
+    try {
+      const res = await fetch(`/api/rendiciones/${reportId}/certificados-pago`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAddError(data.error ?? "No se pudo subir el comprobante.");
+        return;
+      }
+      setAdditionalCertificates((prev) => [...prev, { id: data.id, fileName: data.fileName }]);
+      setPendingAdditionalFile(null);
+      if (additionalFileInputRef.current) additionalFileInputRef.current.value = "";
+    } catch {
+      setAddError("No se pudo subir el comprobante. Revisa tu conexión.");
+    } finally {
+      setAddingAdditional(false);
+    }
+  }
+
+  async function handleDeleteAdditional(id: string) {
+    setAddError(null);
+    const res = await fetch(`/api/rendiciones/${reportId}/certificados-pago/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setAdditionalCertificates((prev) => prev.filter((c) => c.id !== id));
+    } else {
+      setAddError("No se pudo eliminar el comprobante.");
+    }
+  }
+
   if (alreadyPaid) {
     return (
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -182,6 +268,91 @@ export function PaymentCertificateForm({
         </p>
 
         {uploadError ? <p className="mt-2 text-sm text-red-600">{uploadError}</p> : null}
+
+        <div className="mt-5 border-t border-slate-100 pt-4">
+          <h3 className="text-sm font-semibold text-slate-900">Comprobantes de pago adicionales</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            Para cuando el certificado de arriba tenía un error y ya se hizo otra transferencia
+            para corregirlo: agrega el comprobante nuevo sin perder el registro del original.
+          </p>
+
+          {additionalCertificates.length > 0 ? (
+            <ul className="mt-2 space-y-1">
+              {additionalCertificates.map((cert) => (
+                <li key={cert.id} className="flex items-center gap-2 text-sm">
+                  <a
+                    href={`/api/rendiciones/${reportId}/certificados-pago/${cert.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-slate-700 underline"
+                  >
+                    {cert.fileName}
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteAdditional(cert.id)}
+                    className="text-xs text-red-600 hover:text-red-800"
+                  >
+                    Eliminar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          <div
+            onDragEnter={handleDragEnterAdd}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeaveAdd}
+            onDrop={handleDropAdd}
+            className={`mt-3 rounded-md border-2 border-dashed p-3 transition-colors ${
+              dragActiveAdd ? "border-[#004b93] bg-blue-50" : "border-transparent"
+            }`}
+          >
+            <input
+              ref={additionalFileInputRef}
+              type="file"
+              accept="application/pdf,image/*"
+              className="hidden"
+              onChange={(e) => stageAdditionalFile(e.target.files?.[0])}
+            />
+            <button
+              type="button"
+              disabled={addingAdditional}
+              onClick={() => additionalFileInputRef.current?.click()}
+              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            >
+              + Agregar otro comprobante
+            </button>
+            <p className="mt-1 hidden text-xs text-slate-400 sm:block">
+              {dragActiveAdd ? "Suelta aquí para subir" : "…o arrastra y suelta el archivo aquí"}
+            </p>
+          </div>
+
+          {pendingAdditionalFile ? (
+            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+              <span className="text-sm text-amber-800">Nuevo archivo: {pendingAdditionalFile.name}</span>
+              <button
+                type="button"
+                disabled={addingAdditional}
+                onClick={confirmAddAdditional}
+                className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60"
+              >
+                {addingAdditional ? "Subiendo…" : "Agregar comprobante"}
+              </button>
+              <button
+                type="button"
+                disabled={addingAdditional}
+                onClick={cancelAddAdditional}
+                className="text-sm text-slate-500 hover:text-slate-700 disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+            </div>
+          ) : null}
+
+          {addError ? <p className="mt-2 text-sm text-red-600">{addError}</p> : null}
+        </div>
       </section>
     );
   }
