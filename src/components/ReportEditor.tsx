@@ -2,12 +2,18 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { finalizeReportAction } from "@/app/rendiciones/actions";
+import {
+  finalizeReportAction,
+  checkDuplicateDocumentAction,
+  acknowledgeDuplicateDocumentAction,
+} from "@/app/rendiciones/actions";
 import { AttachmentUploader } from "@/components/AttachmentUploader";
 import { SignaturePad } from "@/components/SignaturePad";
+import { DuplicateDocumentModal } from "@/components/DuplicateDocumentModal";
 import { computeTotals } from "@/lib/reports";
 import { formatCurrency, documentTypeLabels } from "@/lib/format";
 import { formatRut } from "@/lib/rut";
+import type { DuplicateDocumentMatch } from "@/lib/duplicate-documents";
 
 type ItemRow = {
   glosa: string;
@@ -88,6 +94,15 @@ export function ReportEditor({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // Aviso de "N° de documento repetido": se consulta al salir del campo, y
+  // si ya se aceptó una vez para el mismo valor no se vuelve a molestar.
+  const [duplicateCheck, setDuplicateCheck] = useState<{
+    index: number;
+    match: Extract<DuplicateDocumentMatch, { kind: "exact" | "number" }>;
+  } | null>(null);
+  const [acknowledgingDuplicate, setAcknowledgingDuplicate] = useState(false);
+  const acknowledgedDuplicates = useRef<Set<string>>(new Set());
+
   const encabezadoRef = useRef<HTMLDivElement>(null);
   const detalleRef = useRef<HTMLDivElement>(null);
   const adjuntosRef = useRef<HTMLDivElement>(null);
@@ -113,6 +128,35 @@ export function ReportEditor({
 
   function removeItem(index: number) {
     setItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function checkDuplicateForRow(index: number) {
+    const row = items[index];
+    const numero = row.numeroDocumento.trim();
+    if (!numero) return;
+
+    const key = `${index}:${row.tipoDocumento}:${numero}`;
+    if (acknowledgedDuplicates.current.has(key)) return;
+
+    const match = await checkDuplicateDocumentAction(row.tipoDocumento, numero, reportId);
+    if (match.kind !== "none") {
+      setDuplicateCheck({ index, match });
+    }
+  }
+
+  async function acceptDuplicateAndContinue() {
+    if (!duplicateCheck || duplicateCheck.match.kind !== "number") return;
+    const row = items[duplicateCheck.index];
+    const numero = row.numeroDocumento.trim();
+
+    setAcknowledgingDuplicate(true);
+    try {
+      await acknowledgeDuplicateDocumentAction(reportId, row.tipoDocumento, numero, duplicateCheck.match.matchedReportId);
+      acknowledgedDuplicates.current.add(`${duplicateCheck.index}:${row.tipoDocumento}:${numero}`);
+      setDuplicateCheck(null);
+    } finally {
+      setAcknowledgingDuplicate(false);
+    }
   }
 
   function handleSubmit() {
@@ -179,7 +223,11 @@ export function ReportEditor({
     startTransition(async () => {
       const result = await submitAction(reportId, formData);
       if (result?.error) {
-        const ref = /adjunt|comprobante/i.test(result.error) ? adjuntosRef : undefined;
+        const ref = /adjunt|comprobante/i.test(result.error)
+          ? adjuntosRef
+          : /rendido en la Rendición/i.test(result.error)
+            ? detalleRef
+            : undefined;
         failWith(result.error, ref);
       } else {
         router.refresh();
@@ -189,6 +237,16 @@ export function ReportEditor({
 
   return (
     <div className="space-y-8">
+      {duplicateCheck ? (
+        <DuplicateDocumentModal
+          match={duplicateCheck.match}
+          numeroDocumento={items[duplicateCheck.index]?.numeroDocumento.trim() ?? ""}
+          acknowledging={acknowledgingDuplicate}
+          onCorrect={() => setDuplicateCheck(null)}
+          onAcceptAndContinue={acceptDuplicateAndContinue}
+        />
+      ) : null}
+
       {error ? (
         <div
           role="alert"
@@ -399,6 +457,7 @@ export function ReportEditor({
                   <input
                     value={row.numeroDocumento}
                     onChange={(e) => updateItem(index, { numeroDocumento: e.target.value })}
+                    onBlur={() => checkDuplicateForRow(index)}
                     className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
                   />
                 </div>
@@ -477,6 +536,7 @@ export function ReportEditor({
                     <input
                       value={row.numeroDocumento}
                       onChange={(e) => updateItem(index, { numeroDocumento: e.target.value })}
+                      onBlur={() => checkDuplicateForRow(index)}
                       className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
                     />
                   </td>

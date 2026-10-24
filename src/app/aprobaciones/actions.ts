@@ -9,11 +9,12 @@ import { sendEmail } from "@/lib/email";
 import { readAttachmentFile } from "@/lib/storage";
 import { getPaymentNoticeEmails, getAdminEmail, getApproverEmail } from "@/lib/roles";
 import { reviewReportSchema, createReportSchema, saveItemsSchema, finalizeReportSchema } from "@/lib/validation";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, documentTypeLabels } from "@/lib/format";
 import { buildReportPdf } from "@/lib/pdf-export";
 import { computeTotals } from "@/lib/reports";
 import { isValidRut, formatRut } from "@/lib/rut";
 import { sendReportUpdatedNotice } from "@/lib/report-notifications";
+import { findDuplicateDocument } from "@/lib/duplicate-documents";
 
 export type ReviewState = {
   error?: string;
@@ -265,6 +266,20 @@ export async function adminUpdateReportAction(
   }
 
   const { items } = itemsParsed.data;
+
+  for (const item of items) {
+    const duplicate = await findDuplicateDocument({
+      tipoDocumento: item.tipoDocumento,
+      numeroDocumento: item.numeroDocumento,
+      excludeReportId: reportId,
+    });
+    if (duplicate.kind === "exact") {
+      return {
+        error: `El ${documentTypeLabels[item.tipoDocumento]} N° ${item.numeroDocumento} ya fue rendido en la Rendición N° ${duplicate.matchedCorrelativo}. No se puede rendir el mismo documento dos veces.`,
+      };
+    }
+  }
+
   const totals = computeTotals(items);
 
   await prisma.$transaction([

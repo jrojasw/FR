@@ -158,6 +158,25 @@ model ExpenseItem {
   reportId String
 
   @@index([reportId])
+  @@index([numeroDocumento])
+}
+
+// Registro de auditoría: cuando alguien ingresa un N° de documento que ya
+// existe en otra rendición (mismo número, pero distinto tipo de documento)
+// y decide continuar igual, se deja constancia de quién aceptó y con qué
+// rendición coincidía. No se usa cuando coincide también el tipo de
+// documento: en ese caso se bloquea el ingreso, nunca se puede aceptar.
+model DocumentDuplicateAcknowledgment {
+  id              String       @id @default(cuid())
+  reportId        String
+  tipoDocumento   DocumentType
+  numeroDocumento String
+  matchedReportId String
+  userId          String
+  createdAt       DateTime     @default(now())
+
+  @@index([reportId])
+  @@index([numeroDocumento])
 }
 
 // Fotos de comprobantes o documentos digitales adjuntos a la rendición (máx. 25)

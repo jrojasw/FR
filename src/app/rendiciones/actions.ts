@@ -11,6 +11,8 @@ import { formatCurrency, formatDate, documentTypeLabels } from "@/lib/format";
 import { computeTotals } from "@/lib/reports";
 import { isValidRut, formatRut } from "@/lib/rut";
 import { createUploadTicket } from "@/lib/mobile-handoff";
+import { findDuplicateDocument, type DuplicateDocumentMatch } from "@/lib/duplicate-documents";
+import type { DocumentType } from "@/generated/prisma/enums";
 import {
   createReportSchema,
   saveItemsSchema,
@@ -153,6 +155,23 @@ export async function finalizeReportAction(
   }
 
   const { items } = itemsParsed.data;
+
+  // Nunca se puede rendir el mismo documento (mismo tipo y mismo N°) dos
+  // veces, sea quien sea quien lo ingrese: se revisa aquí también, no solo
+  // en la advertencia del formulario, para que no se pueda saltar.
+  for (const item of items) {
+    const duplicate = await findDuplicateDocument({
+      tipoDocumento: item.tipoDocumento,
+      numeroDocumento: item.numeroDocumento,
+      excludeReportId: reportId,
+    });
+    if (duplicate.kind === "exact") {
+      return {
+        error: `El ${documentTypeLabels[item.tipoDocumento]} N° ${item.numeroDocumento} ya fue rendido en la Rendición N° ${duplicate.matchedCorrelativo}. No se puede rendir el mismo documento dos veces.`,
+      };
+    }
+  }
+
   const totals = computeTotals(items);
 
   await prisma.$transaction([
@@ -227,4 +246,38 @@ export async function finalizeReportAction(
   });
 
   redirect(`/rendiciones/${reportId}?enviado=1`);
+}
+
+// Se llama al salir del campo "N° documento" en el formulario, para avisar
+// de inmediato si ese número ya está registrado en otra rendición.
+export async function checkDuplicateDocumentAction(
+  tipoDocumento: string,
+  numeroDocumento: string,
+  reportId: string
+): Promise<DuplicateDocumentMatch> {
+  await requireUser();
+  return findDuplicateDocument({ tipoDocumento, numeroDocumento, excludeReportId: reportId });
+}
+
+// Deja constancia de que la persona vio el aviso de "N° de documento
+// repetido" (mismo número, pero distinto tipo de documento) y decidió
+// igual continuar. No existe un equivalente para el choque exacto
+// (mismo tipo y número): ese caso se bloquea siempre, nunca se acepta.
+export async function acknowledgeDuplicateDocumentAction(
+  reportId: string,
+  tipoDocumento: string,
+  numeroDocumento: string,
+  matchedReportId: string
+): Promise<{ ok: boolean }> {
+  const session = await requireUser();
+  await prisma.documentDuplicateAcknowledgment.create({
+    data: {
+      reportId,
+      tipoDocumento: tipoDocumento as DocumentType,
+      numeroDocumento,
+      matchedReportId,
+      userId: session.sub,
+    },
+  });
+  return { ok: true };
 }
