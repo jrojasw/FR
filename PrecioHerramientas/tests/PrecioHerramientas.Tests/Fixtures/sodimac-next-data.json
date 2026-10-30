@@ -1,0 +1,22 @@
+{
+  "props": {
+    "pageProps": {
+      "results": [
+        {
+          "productId": "110001",
+          "skuId": "110001X",
+          "displayName": "Rotomartillo SDS Plus 800W HR2470",
+          "brand": "MAKITA",
+          "url": "https://sodimac.falabella.com/sodimac-cl/product/110001/rotomartillo/110001X",
+          "mediaUrls": ["https://media.falabella.com/sodimacCL/110001/w=200"],
+          "prices": [
+            { "type": "internetPrice", "price": ["149.990"] },
+            { "type": "cmrPrice", "price": ["139.990"] },
+            { "type": "normalPrice", "price": ["169.990"] }
+          ]
+        },
+        { "productId": "110002", "displayName": "Sin precio", "url": "/x", "prices": [] }
+      ]
+    }
+  }
+}

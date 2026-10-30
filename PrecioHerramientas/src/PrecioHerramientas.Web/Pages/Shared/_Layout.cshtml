@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(ViewData["Title"] is string t ? $"{t} · " : "")PrecioHerramientas</title>
+    <meta name="description" content="@(ViewData["Description"] ?? "Compara precios de herramientas en tiendas de Chile y revisa su historial.")" />
+    <link rel="stylesheet" href="~/lib/bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body class="d-flex flex-column min-vh-100">
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container">
+                <a class="navbar-brand fw-bold" asp-page="/Index">🔧 PrecioHerramientas</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Menú">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="nav">
+                    <form class="d-flex flex-grow-1 mx-lg-4 my-2 my-lg-0" method="get" action="/buscar" role="search">
+                        <input class="form-control me-2" type="search" name="q" placeholder="Buscar taladro, esmeril, DCD778…"
+                               value="@Context.Request.Query["q"]" aria-label="Buscar" />
+                        <button class="btn btn-warning" type="submit">Buscar</button>
+                    </form>
+                    <ul class="navbar-nav">
+                        <li class="nav-item"><a class="nav-link" asp-page="/Search">Productos</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-page="/Stores">Tiendas</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container py-4 flex-grow-1">
+        @RenderBody()
+    </main>
+
+    <footer class="border-top py-3 bg-light">
+        <div class="container small text-muted d-flex flex-wrap justify-content-between gap-2">
+            <span>Precios referenciales recolectados automáticamente desde las tiendas. Verifica el precio final en la tienda antes de comprar.</span>
+            <span>&copy; @DateTime.UtcNow.Year PrecioHerramientas</span>
+        </div>
+    </footer>
+
+    <script src="~/lib/bootstrap/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

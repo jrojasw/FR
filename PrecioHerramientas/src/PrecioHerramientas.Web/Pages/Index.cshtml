@@ -1,0 +1,74 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Compara precios de herramientas en Chile";
+}
+
+<section class="hero rounded-3 p-4 p-md-5 mb-4 text-white">
+    <h1 class="display-6 fw-bold">Encuentra el mejor precio en herramientas</h1>
+    <p class="lead mb-4">Comparamos precios de tiendas chilenas y guardamos su historial para que sepas si de verdad es una oferta.</p>
+    <form method="get" action="/buscar" class="row g-2" role="search">
+        <div class="col-md-9">
+            <input type="search" name="q" class="form-control form-control-lg" placeholder="Ej: taladro percutor, esmeril 4 1/2, DCD778D2" aria-label="Buscar" autofocus />
+        </div>
+        <div class="col-md-3 d-grid">
+            <button class="btn btn-warning btn-lg" type="submit">Buscar</button>
+        </div>
+    </form>
+    @if (Model.Categories.Count > 0)
+    {
+        <div class="mt-3 d-flex flex-wrap gap-2">
+            @foreach (var c in Model.Categories)
+            {
+                <a class="badge rounded-pill text-bg-light text-decoration-none" href="/buscar?categoria=@c.Slug">@c.Name</a>
+            }
+        </div>
+    }
+</section>
+
+@if (Model.Drops.Count > 0)
+{
+    <section class="mb-5">
+        <h2 class="h4 mb-3">Bajas de precio recientes</h2>
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
+            @foreach (var d in Model.Drops)
+            {
+                <div class="col">
+                    <div class="card h-100 shadow-sm product-card">
+                        <div class="card-body">
+                            <span class="badge text-bg-danger mb-2">-@d.DropPercent%</span>
+                            <a asp-page="/Product" asp-route-slug="@d.ProductSlug" class="stretched-link d-block text-reset text-decoration-none product-name">@d.ProductName</a>
+                            <div class="mt-2">
+                                <span class="fs-5 fw-bold text-success">@Format.Price(d.Price)</span>
+                                <span class="text-muted text-decoration-line-through small ms-1">@Format.Price(d.PreviousPrice)</span>
+                            </div>
+                            <div class="small text-muted">@d.StoreName · @Format.Date(d.ChangedAt)</div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+<section>
+    <div class="d-flex justify-content-between align-items-baseline mb-3">
+        <h2 class="h4 mb-0">Productos en más tiendas</h2>
+        <a href="/buscar" class="small">Ver todos</a>
+    </div>
+    @if (Model.Popular.Count == 0)
+    {
+        <div class="alert alert-info">
+            Aún no hay productos. Los scrapers se ejecutan según su programación; también puedes lanzarlos a mano desde el panel de Hangfire.
+        </div>
+    }
+    else
+    {
+        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-3">
+            @foreach (var p in Model.Popular)
+            {
+                <div class="col"><partial name="_ProductCard" model="p" /></div>
+            }
+        </div>
+    }
+</section>

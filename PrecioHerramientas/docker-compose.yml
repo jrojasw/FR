@@ -1,0 +1,67 @@
+# Uso:
+#   cp .env.example .env   # y completar contraseñas
+#   docker compose up -d --build
+#   docker compose --profile proxy up -d   # además, Caddy con HTTPS automático
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-precioherramientas}
+      POSTGRES_USER: ${POSTGRES_USER:-precio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build:
+      context: .
+      args:
+        INSTALL_PLAYWRIGHT: ${INSTALL_PLAYWRIGHT:-false}
+    image: precioherramientas-web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Default: Host=db;Port=5432;Database=${POSTGRES_DB:-precioherramientas};Username=${POSTGRES_USER:-precio};Password=${POSTGRES_PASSWORD}
+      Hangfire__DashboardUser: ${HANGFIRE_USER:-admin}
+      Hangfire__DashboardPassword: ${HANGFIRE_PASSWORD:?Defina HANGFIRE_PASSWORD en .env}
+      Scrapers__UserAgent: ${SCRAPER_USER_AGENT:-Mozilla/5.0 (compatible; PrecioHerramientasBot/1.0)}
+      Scrapers__Stores__easy__Enabled: ${SCRAPE_EASY:-true}
+      Scrapers__Stores__sodimac__Enabled: ${SCRAPE_SODIMAC:-false}
+      Scrapers__Stores__imperial__Enabled: ${SCRAPE_IMPERIAL:-false}
+    volumes:
+      - dpkeys:/app/keys
+    # Solo accesible desde el propio VPS; hacia internet se publica a través de Caddy/nginx.
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:8080"
+    # Chromium necesita más memoria compartida que la que Docker asigna por defecto.
+    shm_size: "512mb"
+
+  caddy:
+    image: caddy:2.8-alpine
+    profiles: ["proxy"]
+    restart: unless-stopped
+    depends_on:
+      - web
+    environment:
+      DOMAIN: ${DOMAIN:?Defina DOMAIN en .env para usar el proxy}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  dpkeys:
+  caddy_data:
+  caddy_config:

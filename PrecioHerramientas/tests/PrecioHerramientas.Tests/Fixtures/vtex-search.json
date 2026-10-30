@@ -1,0 +1,45 @@
+[
+  {
+    "productId": "1001",
+    "productName": "Taladro Percutor Inalámbrico 20V DCD778D2",
+    "brand": "DEWALT",
+    "productReference": "DCD778D2-B2",
+    "link": "https://www.easy.cl/taladro-percutor-inalambrico-20v-dcd778d2/p",
+    "categories": ["/Herramientas/Herramientas Eléctricas/Taladros/", "/Herramientas/Herramientas Eléctricas/", "/Herramientas/"],
+    "items": [
+      {
+        "itemId": "55001",
+        "nameComplete": "Taladro Percutor Inalámbrico 20V DCD778D2",
+        "ean": "7898935427473",
+        "images": [{ "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/1/dcd778.jpg" }],
+        "sellers": [
+          { "sellerDefault": true, "commertialOffer": { "Price": 179990, "ListPrice": 219990, "PriceWithoutDiscount": 219990, "AvailableQuantity": 12, "IsAvailable": true } }
+        ]
+      }
+    ]
+  },
+  {
+    "productId": "1002",
+    "productName": "Juego de puntas",
+    "brand": "Bauker",
+    "productReference": "",
+    "link": "/juego-de-puntas/p",
+    "categories": ["/Herramientas/Accesorios/"],
+    "items": [
+      {
+        "itemId": "55002",
+        "nameComplete": "Juego de puntas 32 piezas",
+        "ean": "",
+        "images": [],
+        "sellers": [{ "sellerDefault": true, "commertialOffer": { "Price": 9990, "ListPrice": 9990, "AvailableQuantity": 0, "IsAvailable": false } }]
+      },
+      {
+        "itemId": "55003",
+        "nameComplete": "Juego de puntas 50 piezas",
+        "ean": "",
+        "images": [],
+        "sellers": [{ "sellerDefault": true, "commertialOffer": { "Price": 0, "ListPrice": 0, "AvailableQuantity": 0, "IsAvailable": false } }]
+      }
+    ]
+  }
+]

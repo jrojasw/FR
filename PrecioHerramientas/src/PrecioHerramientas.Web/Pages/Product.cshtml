@@ -1,0 +1,150 @@
+@page "/producto/{slug}"
+@model ProductModel
+@{
+    var p = Model.Product;
+    var best = Model.BestOffer;
+    ViewData["Title"] = p.Name;
+    ViewData["Description"] = best is null
+        ? $"{p.Name}: compara precios en tiendas de Chile."
+        : $"{p.Name} desde {Format.Price(best.Price)} en {best.StoreName}. Compara precios e historial.";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+        @if (p.CategorySlug is not null)
+        {
+            <li class="breadcrumb-item"><a href="/buscar?categoria=@p.CategorySlug">@p.CategoryName</a></li>
+        }
+        <li class="breadcrumb-item active" aria-current="page">@p.Name</li>
+    </ol>
+</nav>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="ratio ratio-1x1 bg-white border rounded">
+            @if (!string.IsNullOrEmpty(p.ImageUrl))
+            {
+                <img src="@p.ImageUrl" alt="@p.Name" class="object-fit-contain p-3" referrerpolicy="no-referrer" />
+            }
+            else
+            {
+                <span class="d-flex align-items-center justify-content-center display-1 text-muted">🔧</span>
+            }
+        </div>
+    </div>
+    <div class="col-md-8">
+        @if (p.BrandName is not null)
+        {
+            <a href="/buscar?marca=@p.BrandSlug" class="text-uppercase small fw-semibold text-decoration-none">@p.BrandName</a>
+        }
+        <h1 class="h3">@p.Name</h1>
+        <ul class="list-inline small text-muted">
+            @if (p.Model is not null) { <li class="list-inline-item">Modelo: <strong>@p.Model</strong></li> }
+            @if (p.Ean is not null) { <li class="list-inline-item">EAN: @p.Ean</li> }
+        </ul>
+
+        @if (best is not null)
+        {
+            <div class="card border-success mb-3">
+                <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div>
+                        <div class="small text-muted">Mejor precio hoy</div>
+                        <div class="display-6 fw-bold text-success">@Format.Price(best.Price)</div>
+                        <div class="small">en <strong>@best.StoreName</strong></div>
+                    </div>
+                    <a href="@best.Url" class="btn btn-success btn-lg" target="_blank" rel="nofollow noopener noreferrer">Ir a la tienda</a>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-warning">Sin stock en las tiendas que seguimos.</div>
+        }
+
+        @if (p.HistoricalMinPrice is { } min)
+        {
+            <p class="small mb-0">
+                Precio mínimo registrado: <strong>@Format.Price(min)</strong> el @Format.Date(p.HistoricalMinDate!.Value).
+                @if (best is not null && best.Price <= min)
+                {
+                    <span class="badge text-bg-success ms-1">¡Es el mínimo histórico!</span>
+                }
+            </p>
+        }
+    </div>
+</div>
+
+<section class="mb-5">
+    <h2 class="h5">Precios por tienda</h2>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Tienda</th>
+                    <th class="d-none d-md-table-cell">Publicación</th>
+                    <th class="text-end">Precio</th>
+                    <th class="text-end d-none d-sm-table-cell">Normal</th>
+                    <th class="d-none d-lg-table-cell">Actualizado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in p.Offers)
+                {
+                    <tr class="@(o.IsAvailable ? "" : "text-muted")">
+                        <td class="fw-semibold">@o.StoreName</td>
+                        <td class="d-none d-md-table-cell small">@o.Title</td>
+                        <td class="text-end text-nowrap">
+                            @if (o.IsAvailable)
+                            {
+                                <span class="fw-bold @(o == best ? "text-success" : "")">@Format.Price(o.Price)</span>
+                                @if (o.DiscountPercent is { } pct)
+                                {
+                                    <span class="badge text-bg-danger ms-1">-@pct%</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">Sin stock</span>
+                            }
+                        </td>
+                        <td class="text-end text-decoration-line-through small d-none d-sm-table-cell">@(o.ListPrice is null ? "" : Format.Price(o.ListPrice))</td>
+                        <td class="small d-none d-lg-table-cell" title="Último cambio de precio: @Format.DateTime(o.LastPriceChangeAt)">@Format.DateTime(o.LastSeenAt)</td>
+                        <td class="text-end">
+                            <a href="@o.Url" class="btn btn-sm btn-outline-primary" target="_blank" rel="nofollow noopener noreferrer">Ver</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section>
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
+        <h2 class="h5 mb-0">Historial de precios</h2>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Rango del historial" id="history-range">
+            <button type="button" class="btn btn-outline-secondary" data-days="30">30 días</button>
+            <button type="button" class="btn btn-outline-secondary active" data-days="90">90 días</button>
+            <button type="button" class="btn btn-outline-secondary" data-days="365">1 año</button>
+        </div>
+    </div>
+    <div class="card card-body">
+        <div class="chart-container"><canvas id="price-history" aria-label="Gráfico del historial de precios" role="img"></canvas></div>
+        <p id="price-history-empty" class="text-muted small mb-0 d-none">Todavía no hay historial para este producto.</p>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="~/lib/chartjs/chart.umd.min.js"></script>
+    <script src="~/js/price-history.js" asp-append-version="true"></script>
+    <script>
+        PriceHistory.init({
+            canvas: document.getElementById('price-history'),
+            empty: document.getElementById('price-history-empty'),
+            range: document.getElementById('history-range'),
+            url: '/api/productos/@p.Id/historial'
+        });
+    </script>
+}

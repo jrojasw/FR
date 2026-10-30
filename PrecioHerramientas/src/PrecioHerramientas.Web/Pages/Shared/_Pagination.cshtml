@@ -1,0 +1,33 @@
+@using PrecioHerramientas.Web.Pages.Shared
+@model PaginationModel
+@if (Model.TotalPages > 1)
+{
+    var start = Math.Max(1, Model.Page - 2);
+    var end = Math.Min(Model.TotalPages, Model.Page + 2);
+    <nav aria-label="Paginación" class="mt-4">
+        <ul class="pagination justify-content-center flex-wrap">
+            <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                <a class="page-link" href="@Model.UrlFor(Model.Page - 1)" rel="prev">Anterior</a>
+            </li>
+            @if (start > 1)
+            {
+                <li class="page-item"><a class="page-link" href="@Model.UrlFor(1)">1</a></li>
+                @if (start > 2) { <li class="page-item disabled"><span class="page-link">…</span></li> }
+            }
+            @for (var p = start; p <= end; p++)
+            {
+                <li class="page-item @(p == Model.Page ? "active" : "")" aria-current="@(p == Model.Page ? "page" : null)">
+                    <a class="page-link" href="@Model.UrlFor(p)">@p</a>
+                </li>
+            }
+            @if (end < Model.TotalPages)
+            {
+                @if (end < Model.TotalPages - 1) { <li class="page-item disabled"><span class="page-link">…</span></li> }
+                <li class="page-item"><a class="page-link" href="@Model.UrlFor(Model.TotalPages)">@Model.TotalPages</a></li>
+            }
+            <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                <a class="page-link" href="@Model.UrlFor(Model.Page + 1)" rel="next">Siguiente</a>
+            </li>
+        </ul>
+    </nav>
+}

@@ -1,0 +1,97 @@
+@page "/buscar"
+@model SearchModel
+@using PrecioHerramientas.Web.Pages.Shared
+@{
+    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.Text) ? "Productos" : $"Resultados para \"{Model.Text}\"";
+}
+
+<div class="row g-4">
+    <aside class="col-lg-3">
+        <form method="get" action="/buscar" class="card card-body shadow-sm">
+            <h2 class="h6 text-uppercase text-muted">Filtrar</h2>
+            <div class="mb-3">
+                <label class="form-label" for="q">Buscar</label>
+                <input id="q" name="q" type="search" class="form-control" value="@Model.Text" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="categoria">Categoría</label>
+                <select id="categoria" name="categoria" class="form-select">
+                    <option value="">Todas</option>
+                    @foreach (var c in Model.Categories)
+                    {
+                        <option value="@c.Slug" selected="@(c.Slug == Model.Category)">@c.Name (@c.Count)</option>
+                    }
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="marca">Marca</label>
+                <select id="marca" name="marca" class="form-select">
+                    <option value="">Todas</option>
+                    @foreach (var b in Model.Brands)
+                    {
+                        <option value="@b.Slug" selected="@(b.Slug == Model.Brand)">@b.Name (@b.Count)</option>
+                    }
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="tienda">Tienda</label>
+                <select id="tienda" name="tienda" class="form-select">
+                    <option value="">Todas</option>
+                    @foreach (var s in Model.Stores)
+                    {
+                        <option value="@s.Key" selected="@(s.Key == Model.Store)">@s.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Precio (CLP)</label>
+                <div class="input-group">
+                    <input name="min" type="number" min="0" step="1000" class="form-control" placeholder="Mín" value="@Model.MinPrice" aria-label="Precio mínimo" />
+                    <input name="max" type="number" min="0" step="1000" class="form-control" placeholder="Máx" value="@Model.MaxPrice" aria-label="Precio máximo" />
+                </div>
+            </div>
+            <input type="hidden" name="orden" value="@Model.Sort" />
+            <div class="d-grid gap-2">
+                <button class="btn btn-primary" type="submit">Aplicar</button>
+                <a class="btn btn-outline-secondary btn-sm" href="/buscar">Limpiar filtros</a>
+            </div>
+        </form>
+    </aside>
+
+    <section class="col-lg-9">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <h1 class="h5 mb-0">
+                @ViewData["Title"]
+                <span class="text-muted fw-normal">· @Model.Results.TotalCount.ToString("N0") productos</span>
+            </h1>
+            <form method="get" action="/buscar" class="d-flex align-items-center gap-2">
+                @foreach (var kv in Request.Query.Where(kv => kv.Key is not ("orden" or "pagina")))
+                {
+                    <input type="hidden" name="@kv.Key" value="@kv.Value" />
+                }
+                <label for="orden" class="small text-muted text-nowrap">Ordenar por</label>
+                <select id="orden" name="orden" class="form-select form-select-sm" onchange="this.form.submit()">
+                    @foreach (var (value, label) in SearchModel.SortOptions)
+                    {
+                        <option value="@value" selected="@((Model.Sort ?? "") == value)">@label</option>
+                    }
+                </select>
+            </form>
+        </div>
+
+        @if (Model.Results.Items.Count == 0)
+        {
+            <div class="alert alert-light border">No encontramos productos con esos criterios. Prueba con menos palabras o quita algún filtro.</div>
+        }
+        else
+        {
+            <div class="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-3">
+                @foreach (var p in Model.Results.Items)
+                {
+                    <div class="col"><partial name="_ProductCard" model="p" /></div>
+                }
+            </div>
+            <partial name="_Pagination" model="new PaginationModel(Model.Results.Page, Model.Results.TotalPages, Model.PageUrl)" />
+        }
+    </section>
+</div>

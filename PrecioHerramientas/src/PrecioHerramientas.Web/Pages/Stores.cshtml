@@ -1,0 +1,45 @@
+@page "/tiendas"
+@model StoresModel
+@{
+    ViewData["Title"] = "Tiendas";
+}
+
+<h1 class="h3 mb-3">Tiendas que comparamos</h1>
+@if (Model.Stores.Count == 0)
+{
+    <div class="alert alert-info">Aún no hay tiendas habilitadas.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Tienda</th>
+                    <th class="text-end">Productos con stock</th>
+                    <th>Última actualización</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model.Stores)
+                {
+                    <tr>
+                        <td><a href="@s.BaseUrl" target="_blank" rel="nofollow noopener noreferrer" class="fw-semibold">@s.Name</a></td>
+                        <td class="text-end"><a href="/buscar?tienda=@s.Key">@s.AvailableOffers.ToString("N0")</a></td>
+                        <td>@(s.LastRunAt is { } at ? Format.DateTime(at) : "Nunca")</td>
+                        <td>
+                            @switch (s.LastRunStatus)
+                            {
+                                case "Succeeded": <span class="badge text-bg-success">OK</span> break;
+                                case "Running": <span class="badge text-bg-info">En curso</span> break;
+                                case "Failed": <span class="badge text-bg-danger">Con errores</span> break;
+                                default: <span class="badge text-bg-secondary">Pendiente</span> break;
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
