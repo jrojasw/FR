@@ -36,6 +36,9 @@ services:
       Scrapers__Stores__easy__Enabled: ${SCRAPE_EASY:-true}
       Scrapers__Stores__sodimac__Enabled: ${SCRAPE_SODIMAC:-false}
       Scrapers__Stores__imperial__Enabled: ${SCRAPE_IMPERIAL:-false}
+      # Tiendas ficticias con datos de ejemplo, para probar la web sin depender de las tiendas reales.
+      Scrapers__Stores__demo-norte__Enabled: ${SCRAPE_DEMO:-false}
+      Scrapers__Stores__demo-sur__Enabled: ${SCRAPE_DEMO:-false}
     volumes:
       - dpkeys:/app/keys
     # Solo accesible desde el propio VPS; hacia internet se publica a través de Caddy/nginx.
@@ -51,7 +54,7 @@ services:
     depends_on:
       - web
     environment:
-      DOMAIN: ${DOMAIN:?Defina DOMAIN en .env para usar el proxy}
+      DOMAIN: ${DOMAIN:-localhost}   # defina DOMAIN en .env al usar --profile proxy
     ports:
       - "80:80"
       - "443:443"
