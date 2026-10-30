@@ -14,6 +14,10 @@ using PrecioHerramientas.Web.Infrastructure;
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
+// Railway, Render y otros indican en PORT el puerto donde debe escuchar la app.
+if (Environment.GetEnvironmentVariable("PORT") is { Length: > 0 } port)
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 builder.Services.AddRazorPages();
 builder.Services.AddCore();
 builder.Services.Configure<IngestionOptions>(configuration.GetSection(IngestionOptions.SectionName));
@@ -34,7 +38,7 @@ builder.Services.AddHangfire(config => config
     .UseRecommendedSerializerSettings()
     .UseFilter(new AutomaticRetryAttribute { Attempts = 1, OnAttemptsExceeded = AttemptsExceededAction.Fail })
     .UsePostgreSqlStorage(
-        options => options.UseNpgsqlConnection(configuration.GetConnectionString("Default")),
+        options => options.UseNpgsqlConnection(ConnectionStrings.Resolve(configuration)),
         new PostgreSqlStorageOptions { SchemaName = "hangfire", PrepareSchemaIfNecessary = true }));
 
 if (hangfireSettings.RunServer)

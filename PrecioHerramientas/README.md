@@ -162,6 +162,22 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 | `/health` | Health check (incluye la base de datos) |
 | `/hangfire` | Dashboard de trabajos (HTTP Basic) |
 
+## Despliegue en Railway
+
+La app lee `PORT` y `DATABASE_URL` (formato `postgres://…`) automáticamente, así que
+en Railway no hace falta armar la cadena de conexión a mano.
+
+1. En Railway: *New Project* → *Deploy from GitHub repo* → elegir este repositorio.
+2. En el servicio creado → *Settings*: **Root Directory** = `PrecioHerramientas` y la
+   rama que corresponda. Railway detecta el `Dockerfile`.
+3. En el proyecto: *+ New* → *Database* → *PostgreSQL*.
+4. En el servicio web → *Variables*:
+   - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`
+   - `Hangfire__DashboardPassword` = una clave larga
+   - opcional: `INSTALL_PLAYWRIGHT=true` (para Sodimac), `Scrapers__Stores__demo-norte__Enabled=true` y `Scrapers__Stores__demo-sur__Enabled=true` (datos de ejemplo)
+5. *Settings* → *Networking* → *Generate Domain*. La web queda en `https://<nombre>.up.railway.app`.
+6. Opcional: un *Volume* montado en `/app/keys` para conservar las claves de ASP.NET Core entre despliegues.
+
 ## Despliegue en un VPS Linux con Docker
 
 ```bash
