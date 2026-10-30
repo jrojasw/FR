@@ -42,6 +42,6 @@ public sealed class ImperialScraper(IServiceProvider services, IOptions<ScraperO
 
     /// <summary>Una consulta que empieza con "/" se toma como ruta de categoría; si no, como búsqueda.</summary>
     protected override string BuildPageUrl(string query, int page) => query.StartsWith('/')
-        ? new Uri(BaseUri, $"{query}?p={page}").ToString()
-        : new Uri(BaseUri, $"/catalogsearch/result/?q={Uri.EscapeDataString(query)}&p={page}").ToString();
+        ? new Uri(BaseUri, $"{query}?p={page}").AbsoluteUri
+        : new Uri(BaseUri, $"/catalogsearch/result/?q={Uri.EscapeDataString(query)}&p={page}").AbsoluteUri;
 }

@@ -39,6 +39,8 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<HttpPageFetcher>();
         services.AddSingleton<PlaywrightPageFetcher>();
+        services.AddKeyedSingleton<IPageFetcher>(PageFetcherKeys.Http, (sp, _) => sp.GetRequiredService<HttpPageFetcher>());
+        services.AddKeyedSingleton<IPageFetcher>(PageFetcherKeys.Browser, (sp, _) => sp.GetRequiredService<PlaywrightPageFetcher>());
 
         // Una implementación por tienda. Para agregar una tienda: crear la clase en Stores/,
         // registrarla aquí y habilitarla en appsettings (Scrapers:Stores:<clave>).

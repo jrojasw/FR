@@ -39,6 +39,15 @@ public sealed class StoreScraperOptions
     /// <summary>Sobrescribe selectores CSS sin recompilar (ver cada scraper HTML).</summary>
     public Dictionary<string, string> Selectors { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Fuerza el uso de navegador (Playwright) en scrapers HTML que lo soportan.</summary>
+    /// <summary>
+    /// Scrapers HTML: true = siempre navegador (Playwright), false = solo HTTP,
+    /// vacío = lo que defina cada tienda.
+    /// </summary>
     public bool? UsePlaywright { get; set; }
+
+    /// <summary>
+    /// Scrapers HTML: URL de búsqueda relativa a la tienda con <c>{query}</c> y <c>{page}</c>,
+    /// para ajustarla sin recompilar si la tienda cambia su sitio.
+    /// </summary>
+    public string? SearchUrlTemplate { get; set; }
 }

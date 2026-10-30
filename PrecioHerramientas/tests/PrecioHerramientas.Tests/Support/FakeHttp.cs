@@ -28,3 +28,9 @@ public static class Fixture
     public static string Read(string name) =>
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
 }
+
+/// <summary>Devuelve el HTML que indique la función, en lugar de descargarlo.</summary>
+public sealed class FakePageFetcher(Func<string, string?> respond) : PrecioHerramientas.Scrapers.Http.IPageFetcher
+{
+    public Task<string?> GetHtmlAsync(string url, string? waitForSelector, CancellationToken ct) => Task.FromResult(respond(url));
+}

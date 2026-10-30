@@ -63,7 +63,7 @@ public abstract class VtexScraperBase(IHttpClientFactory httpClientFactory, IOpt
         var filter = query.StartsWith('/')
             ? $"fq=C:{Uri.EscapeDataString(query)}"
             : $"ft={Uri.EscapeDataString(query)}";
-        return new Uri(BaseUri, $"/api/catalog_system/pub/products/search?{filter}&_from={from}&_to={to}").ToString();
+        return new Uri(BaseUri, $"/api/catalog_system/pub/products/search?{filter}&_from={from}&_to={to}").AbsoluteUri;
     }
 
     public IEnumerable<ScrapedProduct> Map(VtexProduct product)

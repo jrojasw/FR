@@ -105,7 +105,8 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 | `Scrapers:Stores:<clave>:Cron` | Frecuencia (formato cron de 5 campos) |
 | `Scrapers:Stores:<clave>:Queries` | Búsquedas o rutas de categoría a recorrer (vacío = valores por defecto de la clase) |
 | `Scrapers:Stores:<clave>:Selectors` | Sobrescribe selectores CSS de scrapers HTML sin recompilar (`Card`, `Title`, `Link`, `Price`, `ListPrice`, `Image`, `Brand`, `SkuAttribute`, `OutOfStock`, `WaitFor`) |
-| `Scrapers:Stores:<clave>:UsePlaywright` | Fuerza (o desactiva) el navegador en scrapers HTML |
+| `Scrapers:Stores:<clave>:UsePlaywright` | Scrapers HTML: `true` = siempre navegador, `false` = solo HTTP, vacío = lo que defina la tienda (Sodimac: HTTP con respaldo en navegador) |
+| `Scrapers:Stores:<clave>:SearchUrlTemplate` | Scrapers HTML: URL de búsqueda con `{query}` y `{page}`, para ajustarla sin recompilar |
 | `Scrapers:Stores:<clave>:DelayBetweenRequestsMs` | Pausa entre solicitudes a la tienda |
 | `Scrapers:Stores:<clave>:MaxPagesPerQuery` | Tope de páginas por búsqueda |
 
@@ -117,12 +118,12 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 | Clave | Tienda | Plataforma / técnica |
 | --- | --- | --- |
 | `easy` | Easy | API pública de catálogo VTEX (`/api/catalog_system/pub/products/search`), JSON con precio, precio normal, stock, marca, referencia y EAN |
-| `sodimac` | Sodimac | Playwright + JSON `__NEXT_DATA__` de la plataforma Falabella, con selectores como respaldo. Ignora el precio con tarjeta CMR |
+| `sodimac` | Sodimac | Búsqueda `/sodimac-cl/buscar?Ntt=…`; lee el JSON `__NEXT_DATA__` (`props.pageProps.results`). Pide primero por HTTP y, si la tienda lo bloquea o no entrega ese JSON, cambia a Chromium (Playwright). Ignora el precio con tarjeta CMR; el precio tachado queda como precio normal |
 | `imperial` | Imperial | HTML con AngleSharp mediante selectores configurables; si no encuentra la grilla, lee JSON-LD |
 | `demo-norte`, `demo-sur` | Ficticias | Datos generados para desarrollo |
 
 > **Importante:** las URLs, el JSON y los selectores de Easy, Sodimac e Imperial se
-> escribieron según la estructura conocida de cada plataforma, pero **no se
+> escribieron según la estructura documentada públicamente de cada plataforma, pero **no se
 > pudieron verificar contra los sitios reales** porque el entorno donde se
 > desarrolló no tenía acceso a esas tiendas. Antes de habilitarlas en producción,
 > ejecute cada una manualmente desde el dashboard y revise el log y `/tiendas`.
@@ -174,7 +175,9 @@ en Railway no hace falta armar la cadena de conexión a mano.
 4. En el servicio web → *Variables*:
    - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`
    - `Hangfire__DashboardPassword` = una clave larga
-   - opcional: `INSTALL_PLAYWRIGHT=true` (para Sodimac), `Scrapers__Stores__demo-norte__Enabled=true` y `Scrapers__Stores__demo-sur__Enabled=true` (datos de ejemplo)
+   - opcional, solo para probar con datos de ejemplo: `Scrapers__Stores__demo-norte__Enabled=true` y `Scrapers__Stores__demo-sur__Enabled=true` (bórrelas después)
+
+   La imagen ya instala Chromium para Sodimac (`INSTALL_PLAYWRIGHT` es `true` por defecto).
 5. *Settings* → *Networking* → *Generate Domain*. La web queda en `https://<nombre>.up.railway.app`.
 6. Opcional: un *Volume* montado en `/app/keys` para conservar las claves de ASP.NET Core entre despliegues.
 
@@ -192,9 +195,9 @@ docker compose up -d --build
   Si ya usa nginx, haga `proxy_pass http://127.0.0.1:8080;` y envíe
   `X-Forwarded-For` / `X-Forwarded-Proto` (la app los respeta).
 - El dashboard `/hangfire` usa HTTP Basic: úselo **solo detrás de HTTPS**.
-- Para tiendas que requieren navegador (Sodimac), construya con
-  `INSTALL_PLAYWRIGHT=true` en `.env`; la imagen instala Chromium y sus dependencias
-  (~400 MB adicionales).
+- La imagen incluye Chromium y sus dependencias (para Sodimac), lo que suma
+  ~400 MB. Para una imagen liviana sin navegador use `INSTALL_PLAYWRIGHT=false`
+  en `.env` y deshabilite Sodimac.
 - Datos persistentes: volúmenes `pgdata` (base de datos), `dpkeys` (claves de
   ASP.NET Core) y `caddy_data` (certificados).
 

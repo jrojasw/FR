@@ -19,8 +19,9 @@ RUN dotnet publish src/PrecioHerramientas.Web/PrecioHerramientas.Web.csproj \
 # ---------- runtime ----------
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 
-# true = instala Chromium y sus dependencias para los scrapers con Playwright (~400 MB más).
-ARG INSTALL_PLAYWRIGHT=false
+# Instala Chromium y sus dependencias de sistema para los scrapers con navegador
+# (Sodimac). Agrega ~400 MB a la imagen; false para una imagen liviana sin navegador.
+ARG INSTALL_PLAYWRIGHT=true
 
 # La imagen base ya escucha en el puerto 8080 (ASPNETCORE_HTTP_PORTS).
 ENV ASPNETCORE_ENVIRONMENT=Production \
@@ -32,7 +33,8 @@ COPY --from=build /app/publish .
 
 # El paquete Microsoft.Playwright trae su propio Node y CLI en .playwright/.
 RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
-        NODE="$(ls -d ./.playwright/node/linux-*/ | head -n 1)node" \
+        apt-get update \
+        && NODE="$(ls -d ./.playwright/node/linux-*/ | head -n 1)node" \
         && "$NODE" ./.playwright/package/cli.js install --with-deps chromium \
         && rm -rf /var/lib/apt/lists/* \
         && chmod -R a+rX /ms-playwright; \
