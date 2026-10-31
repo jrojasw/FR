@@ -1,0 +1,48 @@
+{
+  "@type": "SearchResults",
+  "resultsList": {
+    "firstRecNum": 1,
+    "lastRecNum": 2,
+    "recsPerPage": 2,
+    "totalNumRecs": 3,
+    "records": [
+      {
+        "attributes": { "product.repositoryId": ["IMP-1001"] },
+        "records": [
+          {
+            "attributes": {
+              "product.displayName": ["Taladro Percutor 650W GSB 13 RE"],
+              "product.repositoryId": ["IMP-1001"],
+              "sku.repositoryId": ["IMP-1001-01"],
+              "product.route": ["/taladro-percutor-650w-gsb-13-re/product/IMP-1001"],
+              "product.brand": ["Bosch"],
+              "sku.listPrice": ["64990.0"],
+              "sku.salePrice": ["49990.0"],
+              "sku.activePrice": ["49990.0"],
+              "product.x_modelo": ["GSB 13 RE"],
+              "sku.x_ean": ["7891131029458"],
+              "product.primaryThumbImageURL": ["/ccstore/v1/images/?source=/file/v123/products/gsb13re.jpg&height=300&width=300"]
+            }
+          }
+        ]
+      },
+      {
+        "attributes": { "product.repositoryId": ["IMP-1002"] },
+        "records": [
+          {
+            "attributes": {
+              "product.displayName": ["Taladro Inalámbrico 18V DDF485Z"],
+              "product.repositoryId": ["IMP-1002"],
+              "product.route": ["/taladro-inalambrico-18v-ddf485z/product/IMP-1002"],
+              "product.brand": ["Makita"],
+              "sku.listPrice": ["89990.0"],
+              "sku.availabilityStatus": ["OUT_OF_STOCK"]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "navigation": { "navigation": [] },
+  "breadcrumbs": { "refinementCrumbs": [ { "label": "Taladros", "dimensionName": "product.category" } ] }
+}

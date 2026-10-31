@@ -110,7 +110,7 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 | `Scrapers:Stores:<clave>:Selectors` | Sobrescribe selectores CSS de scrapers HTML sin recompilar (`Card`, `Title`, `Link`, `Price`, `ListPrice`, `Image`, `Brand`, `SkuAttribute`, `OutOfStock`, `WaitFor`) |
 | `Scrapers:Stores:<clave>:UsePlaywright` | Scrapers HTML: `true` = siempre navegador, `false` = solo HTTP, vacío = lo que defina la tienda (Sodimac: HTTP con respaldo en navegador) |
 | `Scrapers:Stores:<clave>:SearchUrlTemplate` | Scrapers HTML: URL de búsqueda con `{query}` y `{page}`, para ajustarla sin recompilar |
-| `Scrapers:Stores:<clave>:ApiBaseUrl` | Tiendas VTEX: host de la API de catálogo (Easy: `https://easycl.vtexcommercestable.com.br`) |
+| `Scrapers:Stores:<clave>:ApiBaseUrl` | Tiendas con `VtexScraperBase`: host de la API de catálogo, si no es el dominio de la tienda |
 | `Scrapers:BrowserUserAgent` | User-Agent de Playwright; vacío = Chrome de escritorio con la versión real del Chromium instalado |
 | `Scrapers:Stores:<clave>:DelayBetweenRequestsMs` | Pausa entre solicitudes a la tienda |
 | `Scrapers:Stores:<clave>:MaxPagesPerQuery` | Tope de páginas por búsqueda |
@@ -122,9 +122,9 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 
 | Clave | Tienda | Plataforma / técnica |
 | --- | --- | --- |
-| `easy` | Easy | API de catálogo VTEX (`/api/catalog_system/pub/products/search`) en el dominio de la cuenta, `easycl.vtexcommercestable.com.br`: www.easy.cl tiene frontend propio y esa ruta responde 404. JSON con precio, precio normal, stock, marca, referencia y EAN; URL pública `www.easy.cl/{linkText}/p` |
+| `easy` | Easy | Chromium: abre `https://www.easy.cl/search/{término}` y lee las respuestas JSON que el sitio pide para pintar el listado (VTEX catálogo, Intelligent Search o GraphQL, reconocidas por su forma), con las cookies y encabezados del propio sitio. La API de catálogo directa ya no sirve (404 en www.easy.cl, 500 en el dominio interno de VTEX) |
 | `sodimac` | Sodimac | Búsqueda `/sodimac-cl/buscar?Ntt=…`; lee el JSON `__NEXT_DATA__` (`props.pageProps.results`). Pide primero por HTTP y, si la tienda lo bloquea o no entrega ese JSON, cambia a Chromium (Playwright). Ignora el precio con tarjeta CMR; el precio tachado queda como precio normal |
-| `imperial` | Imperial | Siempre con Chromium (HTTP directo responde 403), con User-Agent y encabezados de navegador de escritorio. Lee `__NEXT_DATA__` si el sitio usa la plataforma del grupo Sodimac; si no, la grilla con selectores (cada campo tiene varias alternativas, en orden de prioridad) y, como último recurso, JSON-LD |
+| `imperial` | Imperial | Chromium (HTTP directo responde 403): abre `/searchresults?Ntt={término}`, sigue la redirección del sitio a la categoría y lee las respuestas JSON del listado (Oracle Commerce Cloud: búsqueda guiada o `/ccstore/v1/products`). Respaldo: grilla renderizada y JSON-LD. Una búsqueda que empieza con `/` se usa como ruta de categoría |
 | `demo-norte`, `demo-sur` | Ficticias | Datos generados para desarrollo |
 
 > **Importante:** las URLs, el JSON y los selectores de Easy, Sodimac e Imperial se
@@ -141,7 +141,10 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 1. Crear `src/PrecioHerramientas.Scrapers/Stores/MiTiendaScraper.cs`:
    - tienda VTEX → heredar de `VtexScraperBase` y definir `Store` y `DefaultQueries`;
    - HTML → heredar de `HtmlListingScraperBase`, definir `DefaultSelectors` y
-     `BuildPageUrl`; con `UsesBrowserByDefault => true` usa Playwright;
+     `BuildPageUrl`; `DefaultFetchMode` elige HTTP, navegador o HTTP con respaldo en navegador;
+   - listado armado por JavaScript con una API propia → heredar de
+     `BrowserCaptureScraperBase` y definir `BuildSearchPageUrl`: se abre la búsqueda en
+     Chromium y se leen las respuestas JSON que pide la página (ver `CapturedJsonProductParser`);
    - otro caso (API propia, sitemap, etc.) → implementar `IStoreScraper` directamente.
 2. Registrarla en `Scrapers/ServiceCollectionExtensions.cs`.
 3. Habilitarla en `appsettings.json` → `Scrapers:Stores:<clave>`.

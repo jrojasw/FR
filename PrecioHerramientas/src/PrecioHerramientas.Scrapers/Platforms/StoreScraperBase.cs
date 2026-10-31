@@ -32,25 +32,32 @@ public abstract class StoreScraperBase : IStoreScraper
         // Un mismo producto aparece en varias búsquedas; se entrega una sola vez.
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var failures = new List<string>();
-        foreach (var query in Queries)
+        try
         {
-            int count = 0;
-            var context = new QueryContext();
-            await foreach (var product in ScrapeQueryAsync(query, context, ct))
+            foreach (var query in Queries)
             {
-                if (!seen.Add(product.ExternalId)) continue;
-                count++;
-                yield return product;
+                int count = 0;
+                var context = new QueryContext();
+                await foreach (var product in ScrapeQueryAsync(query, context, ct))
+                {
+                    if (!seen.Add(product.ExternalId)) continue;
+                    count++;
+                    yield return product;
+                }
+                if (context.Failure is { } failure)
+                {
+                    failures.Add($"\"{query}\": {failure}");
+                    Logger.LogWarning("{Store}: \"{Query}\" falló: {Failure}", Store.Key, query, failure);
+                }
+                else
+                {
+                    Logger.LogInformation("{Store}: \"{Query}\" entregó {Count} productos nuevos", Store.Key, query, count);
+                }
             }
-            if (context.Failure is { } failure)
-            {
-                failures.Add($"\"{query}\": {failure}");
-                Logger.LogWarning("{Store}: \"{Query}\" falló: {Failure}", Store.Key, query, failure);
-            }
-            else
-            {
-                Logger.LogInformation("{Store}: \"{Query}\" entregó {Count} productos nuevos", Store.Key, query, count);
-            }
+        }
+        finally
+        {
+            await CleanupAsync();
         }
 
         // Si todo falló o no apareció nada, la ejecución no puede quedar como "OK".
@@ -66,6 +73,9 @@ public abstract class StoreScraperBase : IStoreScraper
         /// <summary>Motivo si la búsqueda no se pudo hacer (p. ej. "HTTP 404 en ..."). Nulo si respondió bien.</summary>
         public string? Failure { get; set; }
     }
+
+    /// <summary>Se llama al terminar la ejecución (también si falla), p. ej. para cerrar el navegador.</summary>
+    protected virtual ValueTask CleanupAsync() => ValueTask.CompletedTask;
 
     protected abstract IAsyncEnumerable<ScrapedProduct> ScrapeQueryAsync(string query, QueryContext context, CancellationToken ct);
 

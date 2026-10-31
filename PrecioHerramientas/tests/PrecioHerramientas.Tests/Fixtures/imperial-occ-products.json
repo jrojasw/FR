@@ -1,0 +1,19 @@
+{
+  "totalResults": 3,
+  "offset": 2,
+  "limit": 2,
+  "items": [
+    {
+      "id": "IMP-1003",
+      "repositoryId": "IMP-1003",
+      "displayName": "Taladro de Banco 1/2\" 350W",
+      "brand": "Redline",
+      "route": "/taladro-de-banco-350w/product/IMP-1003",
+      "primaryFullImageURL": "/file/v123/products/taladro-banco.jpg",
+      "active": true,
+      "listPrices": { "clpPriceGroup": 129990 },
+      "salePrices": { "clpPriceGroup": 119990 },
+      "childSKUs": [ { "repositoryId": "IMP-1003-01", "listPrice": null, "salePrice": null } ]
+    }
+  ]
+}

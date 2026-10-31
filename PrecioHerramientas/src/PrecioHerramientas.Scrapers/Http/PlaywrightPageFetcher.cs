@@ -12,7 +12,7 @@ namespace PrecioHerramientas.Scrapers.Http;
 /// (ver README: <c>INSTALL_PLAYWRIGHT=true</c> en Docker).
 /// </summary>
 public sealed class PlaywrightPageFetcher(IOptions<ScraperOptions> options, ILogger<PlaywrightPageFetcher> logger)
-    : IPageFetcher, IAsyncDisposable
+    : IPageFetcher, IBrowserSessionFactory, IAsyncDisposable
 {
     private readonly SemaphoreSlim _initLock = new(1, 1);
     private IPlaywright? _playwright;
@@ -20,23 +20,8 @@ public sealed class PlaywrightPageFetcher(IOptions<ScraperOptions> options, ILog
 
     public async Task<string?> GetHtmlAsync(string url, string? waitForSelector, CancellationToken ct)
     {
-        var browser = await GetBrowserAsync();
-        await using var context = await browser.NewContextAsync(new BrowserNewContextOptions
-        {
-            UserAgent = options.Value.BrowserUserAgent is { Length: > 0 } ua ? ua : DesktopChromeUserAgent(browser.Version),
-            Locale = "es-CL",
-            TimezoneId = "America/Santiago",
-            ViewportSize = new ViewportSize { Width = 1366, Height = 900 },
-            ExtraHTTPHeaders = new Dictionary<string, string>
-            {
-                ["Accept-Language"] = "es-CL,es;q=0.9,en;q=0.6",
-            },
-        });
-        var page = await context.NewPageAsync();
-
-        // Imágenes, fuentes y video no hacen falta para leer precios.
-        await page.RouteAsync("**/*", route =>
-            route.Request.ResourceType is "image" or "media" or "font" ? route.AbortAsync() : route.ContinueAsync());
+        await using var context = await NewContextAsync();
+        var page = await NewPageAsync(context);
 
         var timeout = options.Value.RequestTimeoutSeconds * 1000f;
         var response = await page.GotoAsync(url, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = timeout });
@@ -56,6 +41,34 @@ public sealed class PlaywrightPageFetcher(IOptions<ScraperOptions> options, ILog
 
         ct.ThrowIfCancellationRequested();
         return await page.ContentAsync();
+    }
+
+    public async Task<IBrowserSession> OpenAsync(CancellationToken ct) =>
+        new PlaywrightSession(await NewContextAsync(), options.Value.RequestTimeoutSeconds * 1000f, logger);
+
+    private async Task<IBrowserContext> NewContextAsync()
+    {
+        var browser = await GetBrowserAsync();
+        return await browser.NewContextAsync(new BrowserNewContextOptions
+        {
+            UserAgent = options.Value.BrowserUserAgent is { Length: > 0 } ua ? ua : DesktopChromeUserAgent(browser.Version),
+            Locale = "es-CL",
+            TimezoneId = "America/Santiago",
+            ViewportSize = new ViewportSize { Width = 1366, Height = 900 },
+            ExtraHTTPHeaders = new Dictionary<string, string>
+            {
+                ["Accept-Language"] = "es-CL,es;q=0.9,en;q=0.6",
+            },
+        });
+    }
+
+    internal static async Task<IPage> NewPageAsync(IBrowserContext context)
+    {
+        var page = await context.NewPageAsync();
+        // Imágenes, fuentes y video no hacen falta para leer precios.
+        await page.RouteAsync("**/*", route =>
+            route.Request.ResourceType is "image" or "media" or "font" ? route.AbortAsync() : route.ContinueAsync());
+        return page;
     }
 
     /// <summary>
@@ -83,11 +96,11 @@ public sealed class PlaywrightPageFetcher(IOptions<ScraperOptions> options, ILog
             });
             return _browser;
         }
-        catch (PlaywrightException ex)
+        catch (Exception ex) when (ex is PlaywrightException or System.ComponentModel.Win32Exception)
         {
             throw new InvalidOperationException(
-                "No se pudo iniciar Chromium para Playwright. Instale los navegadores " +
-                "(en Docker: construir con INSTALL_PLAYWRIGHT=true).", ex);
+                "No se pudo iniciar Chromium para Playwright. Revise que la imagen se construyó con " +
+                "INSTALL_PLAYWRIGHT=true y que .playwright/node/*/node tiene permiso de ejecución. " + ex.Message, ex);
         }
         finally
         {

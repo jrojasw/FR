@@ -1,0 +1,42 @@
+{
+  "products": [
+    {
+      "productId": "2001",
+      "productName": "Taladro percutor inalámbrico 20V DCD778D2",
+      "brand": "DeWalt",
+      "productReference": "DCD778D2",
+      "linkText": "taladro-percutor-inalambrico-20v-dcd778d2",
+      "link": "https://easycl.vtexcommercestable.com.br/taladro-percutor-inalambrico-20v-dcd778d2/p",
+      "categories": ["/Herramientas/Herramientas eléctricas/Taladros/"],
+      "items": [
+        {
+          "itemId": "1180001",
+          "nameComplete": "Taladro percutor inalámbrico 20V DCD778D2",
+          "ean": "7898935427473",
+          "images": [{ "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/1180001/dcd778.jpg" }],
+          "sellers": [
+            { "sellerDefault": true, "commertialOffer": { "Price": 169990, "ListPrice": 199990, "AvailableQuantity": 8, "IsAvailable": true } }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "2002",
+      "productName": "Rotomartillo SDS Plus 800W HR2470",
+      "brand": "Makita",
+      "productReference": "HR2470",
+      "linkText": "rotomartillo-sds-plus-800w-hr2470",
+      "categories": ["/Herramientas/Herramientas eléctricas/Rotomartillos/"],
+      "items": [
+        {
+          "itemId": "1180002",
+          "ean": "0088381077286",
+          "images": [],
+          "sellers": [ { "sellerDefault": true, "commertialOffer": { "Price": 154990, "ListPrice": 154990, "AvailableQuantity": 0, "IsAvailable": false } } ]
+        }
+      ]
+    }
+  ],
+  "recordsFiltered": 4,
+  "pagination": { "count": 2, "current": { "index": 1 } }
+}

@@ -30,8 +30,12 @@ ENV ASPNETCORE_ENVIRONMENT=Production \
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# El paquete Microsoft.Playwright trae su propio Node y CLI en .playwright/.
-RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
+# El paquete Microsoft.Playwright trae su propio Node y CLI en .playwright/. NuGet lo
+# deja como -rwxr--r-- de root: sin a+x el usuario "app" no puede iniciar el driver
+# ("Permission denied" al lanzar Chromium), así que se corrige siempre.
+RUN chmod -R a+rX /app/.playwright \
+    && chmod a+rx /app/.playwright/node/*/node \
+    && if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
         apt-get update \
         && NODE="$(ls -d ./.playwright/node/linux-*/ | head -n 1)node" \
         && "$NODE" ./.playwright/package/cli.js install --with-deps chromium \

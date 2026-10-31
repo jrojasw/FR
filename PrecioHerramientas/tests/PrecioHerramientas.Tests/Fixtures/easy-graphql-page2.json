@@ -1,0 +1,25 @@
+{
+  "data": {
+    "productSearch": {
+      "products": [
+        {
+          "productId": "2003",
+          "productName": "Esmeril angular 4 1/2\" 850W GWS 850",
+          "brand": "Bosch",
+          "productReference": "GWS 850",
+          "linkText": "esmeril-angular-850w-gws-850",
+          "categories": ["/Herramientas/Herramientas eléctricas/Esmeriles/"],
+          "items": [
+            {
+              "itemId": "1180003",
+              "ean": "7891131029458",
+              "images": [],
+              "sellers": [ { "sellerDefault": true, "commertialOffer": { "Price": 52990, "ListPrice": 59990, "AvailableQuantity": 3 } } ]
+            }
+          ]
+        }
+      ],
+      "recordsFiltered": 4
+    }
+  }
+}
