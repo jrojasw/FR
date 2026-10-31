@@ -30,7 +30,7 @@ PrecioHerramientas.sln
 │   │   ├── Platforms/                     VtexScraperBase, HtmlListingScraperBase
 │   │   ├── Http/                          HttpPageFetcher, PlaywrightPageFetcher
 │   │   ├── Parsing/                       Selectores CSS y extractor JSON-LD (schema.org)
-│   │   ├── Stores/                        EasyScraper, SodimacScraper, ImperialScraper, DemoStoreScraper
+│   │   ├── Stores/                        EasyScraper, SodimacScraper, ImperialScraper
 │   │   └── Jobs/ScrapeJob                 Lo que ejecuta Hangfire por tienda
 │   └── PrecioHerramientas.Web             Sitio público, API JSON, Hangfire
 └── tests/PrecioHerramientas.Tests         xUnit: normalización, matching, parsers e ingesta
@@ -79,10 +79,11 @@ dotnet run --project src/PrecioHerramientas.Web      # http://localhost:5007
 dotnet test
 ```
 
-En `Development` están habilitadas dos tiendas ficticias (`demo-norte` y
-`demo-sur`) que generan datos sin salir a internet, y Easy está deshabilitada.
-Para no esperar al cron, abra `http://localhost:5007/hangfire` (usuario `admin`,
-clave `dev`) → *Recurring jobs* → *Trigger now*.
+En `Development` las tiendas vienen deshabilitadas para no salir a internet al
+arrancar. Para recolectar en local, habilite la que quiera (por ejemplo
+`Scrapers__Stores__easy__Enabled=true`) y lance su trabajo desde
+`http://localhost:5007/hangfire` (usuario `admin`, clave `dev`) → *Recurring jobs* →
+*Trigger now*.
 
 Las migraciones se aplican solas al iniciar (`Database:MigrateOnStartup`). Para
 crear una nueva tras cambiar el modelo:
@@ -117,8 +118,8 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 | `Scrapers:Stores:<clave>:DelayBetweenRequestsMs` | Pausa entre solicitudes a la tienda |
 | `Scrapers:Stores:<clave>:MaxPagesPerQuery` | Tope de páginas por búsqueda |
 
-> Las claves con guion (`demo-norte`) funcionan igual como variables de entorno en
-> docker-compose, aunque `export` de bash no las acepte.
+> Las variables de entorno usan doble guion bajo como separador
+> (`Scrapers__Stores__easy__Enabled`).
 
 ## Tiendas incluidas
 
@@ -127,7 +128,6 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 | `easy` | Easy | JSON de Next.js por HTTP: la página `/search/{término}` trae en `__NEXT_DATA__` los productos (`pageProps.serverProductsResponse.productList`), el total (`recordsFiltered`) y el `buildId`; las páginas siguientes salen de `/_next/data/{buildId}/search/{término}.json?search={término}&page=N`. El `buildId` se lee en cada ejecución (y se relee si Easy publica una versión nueva). Si Easy bloquea HTTP se usa Chromium; si la página no trae ese JSON, se leen las respuestas que pide la página |
 | `sodimac` | Sodimac | Búsqueda `/sodimac-cl/buscar?Ntt=…`; lee el JSON `__NEXT_DATA__` (`props.pageProps.results`). Pide primero por HTTP y, si la tienda lo bloquea o no entrega ese JSON, cambia a Chromium (Playwright). Ignora el precio con tarjeta CMR; el precio tachado queda como precio normal |
 | `imperial` | Imperial | API de búsqueda guiada de Oracle Commerce: `/ccstore/v1/assembler/pages/Default/services/guidedsearch?Ntt={término}&searchType=simple&Nrpp=36` resuelve el término (p. ej. "taladro" → `N-1033696118`) y `/guidedsearch/_/N-…?Nrpp=36&No={offset}` entrega los productos (`sku.activePrice`, `sku.availabilityStatus`, `product.route`…) y `totalNumRecs`. HTTP con encabezados de navegador; si responde 403, la API se pide dentro de una sesión de Chromium. Una búsqueda `N-…` se usa directo como categoría |
-| `demo-norte`, `demo-sur` | Ficticias | Datos generados para desarrollo |
 
 > **Importante:** las URLs, el JSON y los selectores de Easy, Sodimac e Imperial se
 > escribieron según la estructura documentada públicamente de cada plataforma, pero **no se
@@ -185,7 +185,6 @@ en Railway no hace falta armar la cadena de conexión a mano.
 4. En el servicio web → *Variables*:
    - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`
    - `Hangfire__DashboardPassword` = una clave larga
-   - opcional, solo para probar con datos de ejemplo: `Scrapers__Stores__demo-norte__Enabled=true` y `Scrapers__Stores__demo-sur__Enabled=true` (bórrelas después)
 
    La imagen ya instala Chromium para Sodimac (`INSTALL_PLAYWRIGHT` es `true` por defecto).
 5. *Settings* → *Networking* → *Generate Domain*. La web queda en `https://<nombre>.up.railway.app`.

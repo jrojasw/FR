@@ -1,4 +1,5 @@
 using Hangfire;
+using Hangfire.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PrecioHerramientas.Core.Abstractions;
@@ -49,6 +50,8 @@ public static class StartupTasks
         var logger = services.GetRequiredService<ILogger<ScrapeJob>>();
         var timeZone = ResolveTimeZone(hangfire.TimeZone, logger);
 
+        RemoveObsoleteJobs(recurringJobs, services.GetServices<IStoreScraper>().Select(s => $"scrape-{s.Store.Key}").ToHashSet(), logger);
+
         foreach (var scraper in services.GetServices<IStoreScraper>())
         {
             var key = scraper.Store.Key;
@@ -68,6 +71,34 @@ public static class StartupTasks
                 options.Cron,
                 new RecurringJobOptions { TimeZone = timeZone });
             logger.LogInformation("Tienda {Store} programada con cron '{Cron}'", key, options.Cron);
+        }
+    }
+
+    /// <summary>Trabajos de tiendas que ya no existen y que Hangfire conserva en su base.</summary>
+    private static readonly string[] RetiredJobIds = ["scrape-demo-norte", "scrape-demo-sur"];
+
+    /// <summary>
+    /// Quita de Hangfire los trabajos "scrape-*" sin scraper registrado (tiendas retiradas,
+    /// como las demo): si no, Hangfire los seguiría ejecutando y fallarían.
+    /// </summary>
+    private static void RemoveObsoleteJobs(IRecurringJobManager recurringJobs, IReadOnlySet<string> currentJobIds, ILogger logger)
+    {
+        var stored = Enumerable.Empty<string>();
+        try
+        {
+            using var connection = JobStorage.Current.GetConnection();
+            stored = connection.GetRecurringJobs().Select(j => j.Id).Where(id => id.StartsWith("scrape-", StringComparison.Ordinal)).ToList();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "No se pudo listar los trabajos recurrentes de Hangfire");
+        }
+
+        foreach (var jobId in RetiredJobIds.Concat(stored).Where(id => !currentJobIds.Contains(id)).Distinct())
+        {
+            recurringJobs.RemoveIfExists(jobId);
+            if (stored.Contains(jobId))
+                logger.LogInformation("Trabajo recurrente {JobId} eliminado: su tienda ya no existe", jobId);
         }
     }
 

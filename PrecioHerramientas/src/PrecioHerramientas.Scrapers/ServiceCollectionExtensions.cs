@@ -48,8 +48,6 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IStoreScraper, EasyScraper>();
         services.AddTransient<IStoreScraper, SodimacScraper>();
         services.AddTransient<IStoreScraper, ImperialScraper>();
-        services.AddTransient<IStoreScraper>(_ => new DemoStoreScraper(DemoStoreScraper.North, 1));
-        services.AddTransient<IStoreScraper>(_ => new DemoStoreScraper(DemoStoreScraper.South, 2));
 
         services.AddScoped<ScrapeJob>();
         return services;
