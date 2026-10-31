@@ -14,8 +14,7 @@ internal sealed class PlaywrightSession(IBrowserContext context, float timeoutMs
 
     public async Task<BrowserPage?> LoadAsync(string url, Func<string, bool> captureJson, string? waitForSelector, CancellationToken ct)
     {
-        _page ??= await PlaywrightPageFetcher.NewPageAsync(context);
-        var page = _page;
+        var page = await PageAsync();
 
         var captured = new ConcurrentQueue<CapturedJson>();
         var pending = new ConcurrentBag<Task>();
@@ -108,6 +107,76 @@ internal sealed class PlaywrightSession(IBrowserContext context, float timeoutMs
         ct.ThrowIfCancellationRequested();
         return await response.TextAsync();
     }
+
+    private async Task<IPage> PageAsync() => _page ??= await PlaywrightPageFetcher.NewPageAsync(context);
+
+    public async Task<IReadOnlyList<SelectOption>> ReadOptionsAsync(string selectSelector, CancellationToken ct)
+    {
+        var select = (await PageAsync()).Locator(selectSelector).First;
+        try
+        {
+            await select.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Attached, Timeout = 10_000 });
+        }
+        catch (TimeoutException)
+        {
+            return [];
+        }
+        var options = new List<SelectOption>();
+        foreach (var option in await select.Locator("option").AllAsync())
+        {
+            var value = await option.GetAttributeAsync("value") ?? "";
+            var label = (await option.InnerTextAsync()).Trim();
+            options.Add(new SelectOption(value.Trim(), label));
+        }
+        return options;
+    }
+
+    public async Task<bool> ChooseOptionAsync(string selectSelector, string value, CancellationToken ct)
+    {
+        try
+        {
+            await (await PageAsync()).Locator(selectSelector).First.SelectOptionAsync(value, new LocatorSelectOptionOptions { Timeout = 10_000 });
+            return true;
+        }
+        catch (Exception ex) when (ex is TimeoutException or PlaywrightException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> ClickAsync(string selector, CancellationToken ct)
+    {
+        var target = (await PageAsync()).Locator(selector).Filter(new LocatorFilterOptions { Visible = true }).First;
+        try
+        {
+            await target.ClickAsync(new LocatorClickOptions { Timeout = 5_000 });
+            return true;
+        }
+        catch (Exception ex) when (ex is TimeoutException or PlaywrightException)
+        {
+            return false;
+        }
+    }
+
+    public async Task WaitForIdleAsync(CancellationToken ct)
+    {
+        var page = await PageAsync();
+        try
+        {
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions { Timeout = 15_000 });
+        }
+        catch (TimeoutException)
+        {
+            // Sitios con conexiones permanentes nunca quedan "idle".
+        }
+        await page.WaitForTimeoutAsync(1_000);
+    }
+
+    public async Task<IReadOnlyDictionary<string, string>> GetCookiesAsync(CancellationToken ct) =>
+        (await context.CookiesAsync()).GroupBy(c => c.Name).ToDictionary(g => g.Key, g => g.Last().Value);
+
+    public Task SetCookieAsync(string name, string value, string url, CancellationToken ct) =>
+        context.AddCookiesAsync([new Cookie { Name = name, Value = value, Url = url }]);
 
     public async ValueTask DisposeAsync() => await context.CloseAsync();
 }

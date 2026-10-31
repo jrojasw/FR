@@ -35,7 +35,8 @@ public sealed record FacetItem(string Slug, string Name, int Count);
 
 public sealed record OfferView(
     string StoreKey, string StoreName, string? StoreLogoUrl, string Url, string Title,
-    decimal Price, decimal? ListPrice, bool IsAvailable, DateTime LastSeenAt, DateTime LastPriceChangeAt)
+    decimal Price, decimal? ListPrice, bool IsAvailable, DateTime LastSeenAt, DateTime LastPriceChangeAt,
+    string? BranchName = null)
 {
     /// <summary>Descuento sobre el precio normal; no se informa si es menor a 1 %.</summary>
     public int? DiscountPercent => ListPrice is { } list && list > Price && (int)Math.Round((list - Price) / list * 100) is var pct and >= 1

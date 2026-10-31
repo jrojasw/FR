@@ -64,7 +64,7 @@ public static class HtmlListingParser
         {
             var title = Text(card, selectors.Title);
             var href = Attr(card, selectors.Link, "href");
-            var price = TextNormalizer.ParseClpPrice(PriceText(card, selectors.Price));
+            var price = Price(card, selectors.Price);
             if (title is null || href is null || price is null) continue;
 
             var url = new Uri(baseUri, href);
@@ -76,7 +76,7 @@ public static class HtmlListingParser
                 Title = TextNormalizer.CleanWhitespace(title),
                 Url = url.GetLeftPart(UriPartial.Path),
                 Price = price.Value,
-                ListPrice = selectors.ListPrice is null ? null : TextNormalizer.ParseClpPrice(PriceText(card, selectors.ListPrice)),
+                ListPrice = selectors.ListPrice is null ? null : Price(card, selectors.ListPrice),
                 IsAvailable = selectors.OutOfStock is null || card.QuerySelector(selectors.OutOfStock) is null,
                 Brand = selectors.Brand is null ? null : Text(card, selectors.Brand),
                 Category = category,
@@ -123,10 +123,23 @@ public static class HtmlListingParser
     }
 
     // Prefiere atributos de máquina (content, data-price) por sobre el texto visible.
-    private static string? PriceText(IElement card, string selector)
+    private static decimal? Price(IElement card, string selector)
     {
         var element = First(card, selector);
         if (element is null) return null;
-        return element.GetAttribute("content") ?? element.GetAttribute("data-price") ?? element.TextContent;
+
+        // Atributos de máquina con punto decimal: data-price-amount="12990.0000" (Magento),
+        // content="12990.00" (schema.org). ParseClpPrice tomaría ese punto como de miles.
+        foreach (var attribute in new[] { "data-price-amount", "content", "data-price" })
+        {
+            if (element.GetAttribute(attribute) is { Length: > 0 } raw)
+            {
+                if (decimal.TryParse(raw, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var value)
+                    && !raw.Contains(','))
+                    return value > 0 ? value : null;
+                return TextNormalizer.ParseClpPrice(raw);
+            }
+        }
+        return TextNormalizer.ParseClpPrice(element.TextContent);
     }
 }

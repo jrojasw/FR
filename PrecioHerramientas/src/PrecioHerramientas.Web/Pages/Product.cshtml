@@ -51,7 +51,7 @@
                     <div>
                         <div class="small text-muted">Mejor precio hoy</div>
                         <div class="display-6 fw-bold text-success">@Format.Price(best.Price)</div>
-                        <div class="small">en <strong>@best.StoreName</strong></div>
+                        <div class="small">en <strong>@best.StoreName</strong>@(best.BranchName is null ? "" : $" · sucursal {best.BranchName}")</div>
                     </div>
                     <a href="@best.Url" class="btn btn-success btn-lg" target="_blank" rel="nofollow noopener noreferrer">Ir a la tienda</a>
                 </div>
@@ -81,7 +81,7 @@
         <table class="table align-middle">
             <thead>
                 <tr>
-                    <th>Tienda</th>
+                    <th>Tienda / sucursal</th>
                     <th class="d-none d-md-table-cell">Publicación</th>
                     <th class="text-end">Precio</th>
                     <th class="text-end d-none d-sm-table-cell">Normal</th>
@@ -93,7 +93,13 @@
                 @foreach (var o in p.Offers)
                 {
                     <tr class="@(o.IsAvailable ? "" : "text-muted")">
-                        <td class="fw-semibold">@o.StoreName</td>
+                        <td>
+                            <div class="fw-semibold">@o.StoreName</div>
+                            @if (o.BranchName is not null)
+                            {
+                                <div class="small text-muted">Sucursal @o.BranchName</div>
+                            }
+                        </td>
                         <td class="d-none d-md-table-cell small">@o.Title</td>
                         <td class="text-end text-nowrap">
                             @if (o.IsAvailable)

@@ -128,6 +128,7 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 | `easy` | Easy | JSON de Next.js por HTTP: la página `/search/{término}` trae en `__NEXT_DATA__` los productos (`pageProps.serverProductsResponse.productList`), el total (`recordsFiltered`) y el `buildId`; las páginas siguientes salen de `/_next/data/{buildId}/search/{término}.json?search={término}&page=N`. El `buildId` se lee en cada ejecución (y se relee si Easy publica una versión nueva). Si Easy bloquea HTTP se usa Chromium; si la página no trae ese JSON, se leen las respuestas que pide la página |
 | `sodimac` | Sodimac | Búsqueda `/sodimac-cl/buscar?Ntt=…`; lee el JSON `__NEXT_DATA__` (`props.pageProps.results`). Pide primero por HTTP y, si la tienda lo bloquea o no entrega ese JSON, cambia a Chromium (Playwright). Ignora el precio con tarjeta CMR; el precio tachado queda como precio normal |
 | `imperial` | Imperial | API de búsqueda guiada de Oracle Commerce: `/ccstore/v1/assembler/pages/Default/services/guidedsearch?Ntt={término}&searchType=simple&Nrpp=36` resuelve el término (p. ej. "taladro" → `N-1033696118`) y `/guidedsearch/_/N-…?Nrpp=36&No={offset}` entrega los productos (`sku.activePrice`, `sku.availabilityStatus`, `product.route`…) y `totalNumRecs`. HTTP con encabezados de navegador; si responde 403, la API se pide dentro de una sesión de Chromium. Una búsqueda `N-…` se usa directo como categoría |
+| `construmart` | Construmart | Magento 2, **precio y stock por sucursal**. En una sola sesión de Chromium: lee las sucursales de las regiones configuradas desde el modal "Elige tu tienda" (o de `Branches:List`), fija cada sucursal y corre todas las búsquedas en ella (`/catalogsearch/result/?q=`, que redirige a una categoría; paginación `?p=N`). Precio desde `data-price-amount`, SKU desde `data-product-sku`. Corre dos veces al día con 3 s entre peticiones |
 
 > **Importante:** las URLs, el JSON y los selectores de Easy, Sodimac e Imperial se
 > escribieron según la estructura documentada públicamente de cada plataforma, pero **no se
@@ -159,6 +160,30 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 - Mantenga pausas entre solicitudes (`DelayBetweenRequestsMs`) y frecuencias
   razonables; el cliente HTTP ya reintenta con espera exponencial ante 429/5xx.
 - Identifique el bot en el `UserAgent` con una URL o correo de contacto.
+
+### Tiendas con precio por sucursal (Construmart)
+
+Cada oferta guarda su sucursal (`BranchCode`, `BranchName`): una publicación tiene
+una oferta, con su historial, por sucursal. El listado muestra el menor precio con
+stock entre sucursales y cuenta tiendas (no sucursales); la ficha del producto
+muestra precio y stock de cada sucursal, y el gráfico una línea por tienda con el
+menor precio entre sus sucursales.
+
+```json
+"construmart": {
+  "Branches": {
+    "Regions": ["Metropolitana"],          // agregar "Valparaíso", "Biobío"... para más regiones
+    "List": [],                            // opcional: [{ "Id": "...", "Name": "Maipú", "Region": "Metropolitana" }]
+    "CookieName": null,                    // si se conoce la cookie de la sucursal, se fija sin abrir el modal
+    "Selectors": {}                        // OpenModal, Region, Store, Confirm (si el modal cambia)
+  }
+}
+```
+
+Al elegir la primera sucursal, el log indica qué cookies cambió el sitio
+(`construmart: al elegir la sucursal ... cambiaron las cookies: ...`). Si una guarda el
+id de la sucursal, configurar `CookieName` y `List` evita abrir el modal en cada
+sucursal.
 
 ## Sitio web
 

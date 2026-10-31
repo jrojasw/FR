@@ -117,6 +117,19 @@ namespace PrecioHerramientas.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("BranchCode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("")
+                        .HasColumnName("branch_code");
+
+                    b.Property<string>("BranchName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("branch_name");
+
                     b.Property<string>("BrandRaw")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -203,9 +216,9 @@ namespace PrecioHerramientas.Infrastructure.Persistence.Migrations
                     b.HasIndex("ProductId")
                         .HasDatabaseName("ix_offers_product_id");
 
-                    b.HasIndex("StoreId", "ExternalId")
+                    b.HasIndex("StoreId", "ExternalId", "BranchCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_offers_store_id_external_id");
+                        .HasDatabaseName("ix_offers_store_id_external_id_branch_code");
 
                     b.ToTable("offers", (string)null);
                 });

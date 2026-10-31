@@ -65,14 +65,14 @@ public abstract class BrowserCaptureScraperBase(IServiceProvider services, IOpti
         for (int page = 2; page <= Options.MaxPagesPerQuery; page++)
         {
             await PoliteDelayAsync(ct);
-            var more = await LoadNextPageAsync(query, first.ApiUrl, page, ct);
+            var more = await LoadNextPageAsync(query, first, page, ct);
             var fresh = more.Where(p => seen.Add(p.ExternalId)).ToList();
             if (fresh.Count == 0) yield break;
             foreach (var product in fresh) yield return product;
         }
     }
 
-    private sealed record FirstPage(IReadOnlyList<ScrapedProduct> Products, string? ApiUrl);
+    private sealed record FirstPage(IReadOnlyList<ScrapedProduct> Products, string? ApiUrl, string FinalUrl);
 
     private async Task<FirstPage?> LoadFirstPageAsync(string query, QueryContext context, CancellationToken ct)
     {
@@ -103,27 +103,34 @@ public abstract class BrowserCaptureScraperBase(IServiceProvider services, IOpti
         if (best.Products is { Count: > 0 })
         {
             Logger.LogInformation("{Store}: \"{Query}\" leído desde {Api} ({Count} productos)", Store.Key, query, best.Url, best.Products.Count);
-            return new FirstPage(best.Products, best.Url);
+            return new FirstPage(best.Products, best.Url, page.FinalUrl);
         }
 
         var fromHtml = await ParseHtmlAsync(page.Html, page.FinalUrl, ct);
         if (fromHtml.Count > 0)
-            return new FirstPage(fromHtml, null);
+            return new FirstPage(fromHtml, null, page.FinalUrl);
 
         context.Failure = $"sin productos en {page.FinalUrl} ({page.Responses.Count} respuestas JSON revisadas)";
         return null;
     }
 
-    private async Task<IReadOnlyList<ScrapedProduct>> LoadNextPageAsync(string query, string? apiUrl, int page, CancellationToken ct)
+    /// <summary>
+    /// URL de la página <paramref name="page"/> cuando no hay API que paginar. Por defecto la de
+    /// <see cref="SearchPageUrl"/>; una tienda cuya búsqueda redirige (p. ej. a una categoría)
+    /// puede paginar sobre <paramref name="finalUrl"/>.
+    /// </summary>
+    protected virtual string? NextPageUrl(string query, string finalUrl, int page) => SearchPageUrl(query, page);
+
+    private async Task<IReadOnlyList<ScrapedProduct>> LoadNextPageAsync(string query, FirstPage first, int page, CancellationToken ct)
     {
         try
         {
-            if (apiUrl is not null && PagingUrl.ForPage(apiUrl, page) is { } nextApi)
+            if (first.ApiUrl is not null && PagingUrl.ForPage(first.ApiUrl, page) is { } nextApi)
                 return (await (await SessionAsync(ct)).GetAsync(nextApi, ct)) is { } json
                     ? CapturedJsonProductParser.Parse(json, BaseUri)
                     : [];
 
-            if (SearchPageUrl(query, page) is { } nextPage
+            if (NextPageUrl(query, first.FinalUrl, page) is { } nextPage
                 && await (await SessionAsync(ct)).LoadAsync(nextPage, ShouldCapture, WaitForSelector, ct) is { } loaded)
             {
                 var products = loaded.Responses.SelectMany(r => CapturedJsonProductParser.Parse(r.Body, BaseUri)).ToList();
@@ -138,7 +145,7 @@ public abstract class BrowserCaptureScraperBase(IServiceProvider services, IOpti
         return [];
     }
 
-    private async Task<IReadOnlyList<ScrapedProduct>> ParseHtmlAsync(string html, string url, CancellationToken ct)
+    protected async Task<IReadOnlyList<ScrapedProduct>> ParseHtmlAsync(string html, string url, CancellationToken ct)
     {
         using var document = await BrowsingContext.New(Configuration.Default).OpenAsync(req => req.Content(html).Address(url), ct);
 
@@ -219,7 +226,7 @@ public abstract class BrowserCaptureScraperBase(IServiceProvider services, IOpti
         return await response.Content.ReadAsStringAsync(ct);
     }
 
-    private async Task<IBrowserSession> SessionAsync(CancellationToken ct) =>
+    protected async Task<IBrowserSession> SessionAsync(CancellationToken ct) =>
         _session ??= await services.GetRequiredService<IBrowserSessionFactory>().OpenAsync(ct);
 
     protected override async ValueTask CleanupAsync()

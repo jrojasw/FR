@@ -14,6 +14,14 @@ public sealed record ScrapedProduct
     public string? Ean { get; init; }
     public string? Category { get; init; }
     public string? ImageUrl { get; init; }
+
+    /// <summary>
+    /// Sucursal, en tiendas cuyo precio y stock dependen de ella (p. ej. Construmart).
+    /// Nulo en tiendas con un solo precio nacional.
+    /// </summary>
+    public string? BranchCode { get; init; }
+
+    public string? BranchName { get; init; }
 }
 
 /// <summary>Datos estáticos de la tienda que maneja un scraper.</summary>

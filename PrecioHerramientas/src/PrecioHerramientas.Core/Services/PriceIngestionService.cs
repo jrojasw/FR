@@ -77,18 +77,21 @@ public sealed class PriceIngestionService(
         var unique = batch
             .Where(i => IsValid(i) || Reject(stats, i))
             .Select(Sanitize)
-            .GroupBy(i => i.ExternalId.Trim())
+            .GroupBy(i => OfferKeys.For(i.ExternalId, i.BranchCode))
             .Select(g => g.Last())
             .ToList();
 
-        var existing = await offers.GetByExternalIdsAsync(storeId, unique.Select(i => i.ExternalId.Trim()).ToList(), ct);
+        var existing = await offers.GetByExternalIdsAsync(storeId, unique.Select(i => i.ExternalId).Distinct().ToList(), ct);
+        // La misma publicación en otra sucursal ya tiene producto: se reutiliza en vez de volver a agrupar.
+        foreach (var known in existing.Values)
+            context.ByExternalId.TryAdd(known.ExternalId, known.Product);
 
         foreach (var item in unique)
         {
             var identity = ProductIdentity.From(item);
             if (identity.Model is { Length: > FieldLimits.Model } longModel)
                 identity = identity with { Model = longModel[..FieldLimits.Model] };
-            if (existing.TryGetValue(item.ExternalId.Trim(), out var offer))
+            if (existing.TryGetValue(OfferKeys.For(item.ExternalId, item.BranchCode), out var offer))
             {
                 UpdateOffer(offer, item, now, stats);
                 EnrichProduct(offer.Product, item, null);
@@ -96,7 +99,9 @@ public sealed class PriceIngestionService(
             }
             else
             {
-                var product = await ResolveProductAsync(identity, item, context, now, stats, ct);
+                var product = context.ByExternalId.GetValueOrDefault(item.ExternalId)
+                    ?? await ResolveProductAsync(identity, item, context, now, stats, ct);
+                context.ByExternalId.TryAdd(item.ExternalId, product);
                 CreateOffer(storeId, product, item, now);
                 stats.OffersCreated++;
                 context.Touched.Add(product);
@@ -139,6 +144,8 @@ public sealed class PriceIngestionService(
             Brand = Fit(item.Brand?.Trim(), FieldLimits.BrandRaw, "marca"),
             Model = Fit(item.Model?.Trim(), FieldLimits.ModelRaw, "modelo"),
             Ean = Fit(item.Ean?.Trim(), FieldLimits.OfferEan, "ean"),
+            BranchCode = Fit(item.BranchCode?.Trim(), FieldLimits.BranchCode, "sucursal"),
+            BranchName = Fit(item.BranchName?.Trim(), FieldLimits.BranchName, "nombre de sucursal"),
         };
         if (cut.Count > 0)
             logger.LogWarning("Producto {ExternalId} con campos demasiado largos, se recortaron: {Fields}", clean.ExternalId, string.Join(", ", cut));
@@ -161,6 +168,7 @@ public sealed class PriceIngestionService(
         offer.ModelRaw = item.Model ?? offer.ModelRaw;
         offer.Ean = item.Ean ?? offer.Ean;
         offer.ImageUrl = item.ImageUrl ?? offer.ImageUrl;
+        offer.BranchName = item.BranchName ?? offer.BranchName;
         offer.LastSeenAt = now;
 
         var listPrice = NormalizeListPrice(item);
@@ -188,6 +196,8 @@ public sealed class PriceIngestionService(
             StoreId = storeId,
             Product = product,
             ExternalId = item.ExternalId.Trim(),
+            BranchCode = item.BranchCode ?? "",
+            BranchName = item.BranchName,
             Url = item.Url,
             Title = TextNormalizer.CleanWhitespace(item.Title),
             BrandRaw = item.Brand,
@@ -361,6 +371,9 @@ public sealed class PriceIngestionService(
     {
         public Dictionary<string, Product> ByEan { get; } = new();
         public Dictionary<string, Product> ByModelKey { get; } = new();
+
+        /// <summary>Producto de cada id externo de la tienda (compartido entre sucursales).</summary>
+        public Dictionary<string, Product> ByExternalId { get; } = new(StringComparer.Ordinal);
         public Dictionary<string, Brand> Brands { get; } = new();
         public Dictionary<string, Category> Categories { get; } = new();
         public HashSet<string> Slugs { get; } = new();

@@ -14,6 +14,15 @@ public class Offer
     /// <summary>Identificador del producto en la tienda (SKU, id interno).</summary>
     public required string ExternalId { get; set; }
 
+    /// <summary>
+    /// Sucursal de la oferta en tiendas con precio por sucursal; vacío ("") en el resto.
+    /// Una tienda puede tener la misma publicación en varias sucursales, cada una con su
+    /// precio, stock e historial.
+    /// </summary>
+    public string BranchCode { get; set; } = "";
+
+    public string? BranchName { get; set; }
+
     public required string Url { get; set; }
     public required string Title { get; set; }
     public string? BrandRaw { get; set; }

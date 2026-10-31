@@ -51,7 +51,8 @@ internal sealed class ProductRepository(AppDbContext db) : IProductRepository
         var aggregates = await db.Offers
             .Where(o => productIds.Contains(o.ProductId) && o.IsAvailable)
             .GroupBy(o => o.ProductId)
-            .Select(g => new { ProductId = g.Key, Best = g.Min(o => o.Price), Count = g.Count() })
+            // Cantidad de tiendas (no de sucursales) con stock, y el menor precio entre todas.
+            .Select(g => new { ProductId = g.Key, Best = g.Min(o => o.Price), Count = g.Select(o => o.StoreId).Distinct().Count() })
             .ToDictionaryAsync(x => x.ProductId, ct);
 
         var toUpdate = await db.Products.Where(p => productIds.Contains(p.Id)).ToListAsync(ct);
@@ -76,7 +77,7 @@ internal sealed class OfferRepository(AppDbContext db) : IOfferRepository
         await db.Offers
             .Include(o => o.Product)
             .Where(o => o.StoreId == storeId && externalIds.Contains(o.ExternalId))
-            .ToDictionaryAsync(o => o.ExternalId, ct);
+            .ToDictionaryAsync(o => OfferKeys.For(o.ExternalId, o.BranchCode), ct);
 
     public Task<int> CountAvailableAsync(int storeId, CancellationToken ct = default) =>
         db.Offers.CountAsync(o => o.StoreId == storeId && o.IsAvailable, ct);

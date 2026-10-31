@@ -36,6 +36,7 @@ services:
       Scrapers__Stores__easy__Enabled: ${SCRAPE_EASY:-true}
       Scrapers__Stores__sodimac__Enabled: ${SCRAPE_SODIMAC:-true}
       Scrapers__Stores__imperial__Enabled: ${SCRAPE_IMPERIAL:-true}
+      Scrapers__Stores__construmart__Enabled: ${SCRAPE_CONSTRUMART:-true}
     # Solo accesible desde el propio VPS; hacia internet se publica a través de Caddy/nginx.
     ports:
       - "127.0.0.1:${WEB_PORT:-8080}:8080"

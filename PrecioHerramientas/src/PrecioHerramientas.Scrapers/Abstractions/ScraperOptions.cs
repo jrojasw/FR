@@ -57,6 +57,43 @@ public sealed class StoreScraperOptions
     /// </summary>
     public string? SearchUrlTemplate { get; set; }
 
+    /// <summary>Otro dominio para la tienda (p. ej. un entorno de pruebas). Vacío = el real.</summary>
+    public string? BaseUrl { get; set; }
+
     /// <summary>Tiendas VTEX: host de la API de catálogo, si no es el dominio de la tienda.</summary>
     public string? ApiBaseUrl { get; set; }
+
+    /// <summary>Tiendas con precio por sucursal: qué sucursales recorrer y cómo elegirlas.</summary>
+    public BranchOptions Branches { get; set; } = new();
+}
+
+/// <summary>
+/// Sucursales a recorrer en tiendas cuyo precio y stock dependen de la sucursal.
+/// </summary>
+public sealed class BranchOptions
+{
+    /// <summary>Regiones cuyas sucursales se recorren (se compara sin tildes ni mayúsculas, por contenido).</summary>
+    public List<string> Regions { get; set; } = new();
+
+    /// <summary>
+    /// Lista fija de sucursales. Si está vacía, se lee del selector de sucursal del sitio.
+    /// Útil para fijar ids conocidos o excluir alguna.
+    /// </summary>
+    public List<BranchDefinition> List { get; set; } = new();
+
+    /// <summary>
+    /// Si se conoce la cookie en que el sitio guarda la sucursal, se fija directamente
+    /// (más rápido) en vez de usar el selector. Requiere <see cref="List"/> con los ids.
+    /// </summary>
+    public string? CookieName { get; set; }
+
+    /// <summary>Sobrescribe los selectores del modal: OpenModal, Region, Store, Confirm.</summary>
+    public Dictionary<string, string> Selectors { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+}
+
+public sealed class BranchDefinition
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Region { get; set; } = "";
 }

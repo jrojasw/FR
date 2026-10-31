@@ -20,7 +20,7 @@ public abstract class StoreScraperBase : IStoreScraper
 
     protected StoreScraperOptions Options => _options.For(Store.Key);
     protected ILogger Logger { get; }
-    protected Uri BaseUri => new(Store.BaseUrl);
+    protected Uri BaseUri => new(Options.BaseUrl is { Length: > 0 } custom ? custom : Store.BaseUrl);
 
     /// <summary>Búsquedas / categorías a recorrer cuando la configuración no define ninguna.</summary>
     protected abstract IReadOnlyList<string> DefaultQueries { get; }
@@ -32,15 +32,17 @@ public abstract class StoreScraperBase : IStoreScraper
         // Un mismo producto aparece en varias búsquedas; se entrega una sola vez.
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var failures = new List<string>();
+        IReadOnlyList<string> plan = [];
         try
         {
-            foreach (var query in Queries)
+            plan = await PlanAsync(ct);
+            foreach (var query in plan)
             {
                 int count = 0;
                 var context = new QueryContext();
                 await foreach (var product in ScrapeQueryAsync(query, context, ct))
                 {
-                    if (!seen.Add(product.ExternalId)) continue;
+                    if (!seen.Add($"{product.ExternalId}|{product.BranchCode}")) continue;
                     count++;
                     yield return product;
                 }
@@ -61,9 +63,9 @@ public abstract class StoreScraperBase : IStoreScraper
         }
 
         // Si todo falló o no apareció nada, la ejecución no puede quedar como "OK".
-        if (Queries.Count > 0 && failures.Count == Queries.Count)
+        if (plan.Count > 0 && failures.Count == plan.Count)
             throw new ScrapeFailedException($"{Store.Name}: todas las búsquedas fallaron. {string.Join("; ", failures.Take(3))}");
-        if (Queries.Count > 0 && seen.Count == 0)
+        if (plan.Count > 0 && seen.Count == 0)
             throw new ScrapeFailedException($"{Store.Name}: ninguna búsqueda devolvió productos; revise la URL de búsqueda y los selectores.");
     }
 
@@ -73,6 +75,13 @@ public abstract class StoreScraperBase : IStoreScraper
         /// <summary>Motivo si la búsqueda no se pudo hacer (p. ej. "HTTP 404 en ..."). Nulo si respondió bien.</summary>
         public string? Failure { get; set; }
     }
+
+    /// <summary>
+    /// Lista de trabajo de la ejecución; cada elemento se pasa a <see cref="ScrapeQueryAsync"/>.
+    /// Por defecto, las búsquedas configuradas. Tiendas con sucursales la arman sucursal por
+    /// sucursal.
+    /// </summary>
+    protected virtual Task<IReadOnlyList<string>> PlanAsync(CancellationToken ct) => Task.FromResult(Queries);
 
     /// <summary>Se llama al terminar la ejecución (también si falla), p. ej. para cerrar el navegador.</summary>
     protected virtual ValueTask CleanupAsync() => ValueTask.CompletedTask;

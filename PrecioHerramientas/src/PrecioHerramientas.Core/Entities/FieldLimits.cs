@@ -26,4 +26,6 @@ public static class FieldLimits
     public const int BrandRaw = 200;
     public const int ModelRaw = 200;
     public const int OfferEan = 200;
+    public const int BranchCode = 50;
+    public const int BranchName = 200;
 }

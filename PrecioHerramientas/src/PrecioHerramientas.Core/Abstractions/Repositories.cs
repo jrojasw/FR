@@ -31,7 +31,10 @@ public interface IProductRepository
 
 public interface IOfferRepository
 {
-    /// <summary>Ofertas de una tienda por id externo, con su producto cargado.</summary>
+    /// <summary>
+    /// Ofertas de una tienda con esos ids externos, en todas sus sucursales, con su producto
+    /// cargado. La clave es <see cref="OfferKeys.For(string, string?)"/>.
+    /// </summary>
     Task<Dictionary<string, Offer>> GetByExternalIdsAsync(int storeId, IReadOnlyCollection<string> externalIds, CancellationToken ct = default);
     Task<int> CountAvailableAsync(int storeId, CancellationToken ct = default);
 

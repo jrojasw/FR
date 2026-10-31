@@ -168,4 +168,44 @@ public class PriceIngestionServiceTests : IDisposable
         Assert.True(offer.Product.Brand!.Name.Length <= FieldLimits.BrandName);
         Assert.True((await _test.Db.Categories.SingleAsync()).Name.Length <= FieldLimits.CategoryName);
     }
+
+    [Fact]
+    public async Task Misma_publicacion_en_varias_sucursales_es_un_producto_con_una_oferta_por_sucursal()
+    {
+        var construmart = await _test.AddStoreAsync("construmart");
+        var easy = await _test.AddStoreAsync("easy");
+
+        // Sin marca ni modelo reconocibles: el agrupamiento entre sucursales sale del SKU.
+        await _test.IngestAsync(construmart,
+            Item("1004521", "Set de brocas 5 piezas", 7990) with { BranchCode = "CM-MAIPU", BranchName = "Maipú" },
+            Item("1004521", "Set de brocas 5 piezas", 7490) with { BranchCode = "CM-LAFLORIDA", BranchName = "La Florida" });
+        await _test.IngestAsync(construmart,
+            Item("1004521", "Set de brocas 5 piezas", 6990) with { BranchCode = "CM-PUENTE", BranchName = "Puente Alto" },
+            Item("1004521", "Set de brocas 5 piezas", 7990) with { BranchCode = "CM-MAIPU", BranchName = "Maipú" },
+            Item("1004521", "Set de brocas 5 piezas", 7490) with { BranchCode = "CM-LAFLORIDA", BranchName = "La Florida" });
+        await _test.IngestAsync(easy, Item("E-1", "Set de brocas 5 piezas", 8990));
+
+        var products = await _test.Db.Products.Include(p => p.Offers).ToListAsync();
+        var brocas = Assert.Single(products, p => p.Offers.Any(o => o.StoreId == construmart.Id));
+        Assert.Equal(3, brocas.Offers.Count(o => o.StoreId == construmart.Id));
+        Assert.Equal(["CM-LAFLORIDA", "CM-MAIPU", "CM-PUENTE"], brocas.Offers.Where(o => o.StoreId == construmart.Id).Select(o => o.BranchCode).Order());
+        Assert.Equal(6990m, brocas.BestPrice);          // el menor entre sucursales
+        Assert.Equal("Puente Alto", brocas.Offers.Single(o => o.BranchCode == "CM-PUENTE").BranchName);
+    }
+
+    [Fact]
+    public async Task Cantidad_de_tiendas_cuenta_tiendas_y_no_sucursales()
+    {
+        var construmart = await _test.AddStoreAsync("construmart");
+        var easy = await _test.AddStoreAsync("easy");
+
+        await _test.IngestAsync(construmart,
+            Item("1", "Taladro DeWalt DCD778D2", 180000, "DeWalt", "DCD778D2") with { BranchCode = "A" },
+            Item("1", "Taladro DeWalt DCD778D2", 175000, "DeWalt", "DCD778D2") with { BranchCode = "B" });
+        await _test.IngestAsync(easy, Item("E-9", "Taladro DeWalt DCD778D2", 189990, "DeWalt", "DCD778D2"));
+
+        var product = await _test.Db.Products.SingleAsync();
+        Assert.Equal(2, product.OfferCount);     // Construmart y Easy, aunque haya 3 ofertas
+        Assert.Equal(175000m, product.BestPrice);
+    }
 }
