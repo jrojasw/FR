@@ -8,10 +8,10 @@ internal sealed class StoreConfiguration : IEntityTypeConfiguration<Store>
 {
     public void Configure(EntityTypeBuilder<Store> b)
     {
-        b.Property(x => x.Key).HasMaxLength(50);
-        b.Property(x => x.Name).HasMaxLength(100);
-        b.Property(x => x.BaseUrl).HasMaxLength(300);
-        b.Property(x => x.LogoUrl).HasMaxLength(500);
+        b.Property(x => x.Key).HasMaxLength(FieldLimits.StoreKey);
+        b.Property(x => x.Name).HasMaxLength(FieldLimits.StoreName);
+        b.Property(x => x.BaseUrl).HasMaxLength(FieldLimits.StoreUrl);
+        b.Property(x => x.LogoUrl).HasMaxLength(FieldLimits.Url);
         b.HasIndex(x => x.Key).IsUnique();
     }
 }
@@ -20,8 +20,8 @@ internal sealed class BrandConfiguration : IEntityTypeConfiguration<Brand>
 {
     public void Configure(EntityTypeBuilder<Brand> b)
     {
-        b.Property(x => x.Name).HasMaxLength(100);
-        b.Property(x => x.Slug).HasMaxLength(100);
+        b.Property(x => x.Name).HasMaxLength(FieldLimits.BrandName);
+        b.Property(x => x.Slug).HasMaxLength(FieldLimits.Slug);
         b.HasIndex(x => x.Slug).IsUnique();
     }
 }
@@ -30,8 +30,8 @@ internal sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
 {
     public void Configure(EntityTypeBuilder<Category> b)
     {
-        b.Property(x => x.Name).HasMaxLength(100);
-        b.Property(x => x.Slug).HasMaxLength(100);
+        b.Property(x => x.Name).HasMaxLength(FieldLimits.CategoryName);
+        b.Property(x => x.Slug).HasMaxLength(FieldLimits.Slug);
         b.HasIndex(x => x.Slug).IsUnique();
     }
 }
@@ -40,12 +40,12 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     public void Configure(EntityTypeBuilder<Product> b)
     {
-        b.Property(x => x.Name).HasMaxLength(300);
-        b.Property(x => x.Slug).HasMaxLength(140);
-        b.Property(x => x.Model).HasMaxLength(60);
-        b.Property(x => x.Ean).HasMaxLength(14);
-        b.Property(x => x.ImageUrl).HasMaxLength(1000);
-        b.Property(x => x.SearchText).HasMaxLength(600);
+        b.Property(x => x.Name).HasMaxLength(FieldLimits.ProductName);
+        b.Property(x => x.Slug).HasMaxLength(FieldLimits.ProductSlug);
+        b.Property(x => x.Model).HasMaxLength(FieldLimits.Model);
+        b.Property(x => x.Ean).HasMaxLength(FieldLimits.ProductEan);
+        b.Property(x => x.ImageUrl).HasMaxLength(FieldLimits.Url);
+        b.Property(x => x.SearchText).HasMaxLength(FieldLimits.SearchText);
 
         b.HasIndex(x => x.Slug).IsUnique();
         b.HasIndex(x => x.Ean).IsUnique().HasFilter("ean IS NOT NULL");
@@ -62,13 +62,13 @@ internal sealed class OfferConfiguration : IEntityTypeConfiguration<Offer>
 {
     public void Configure(EntityTypeBuilder<Offer> b)
     {
-        b.Property(x => x.ExternalId).HasMaxLength(100);
-        b.Property(x => x.Url).HasMaxLength(1000);
-        b.Property(x => x.Title).HasMaxLength(300);
-        b.Property(x => x.BrandRaw).HasMaxLength(100);
-        b.Property(x => x.ModelRaw).HasMaxLength(100);
-        b.Property(x => x.Ean).HasMaxLength(50);
-        b.Property(x => x.ImageUrl).HasMaxLength(1000);
+        b.Property(x => x.ExternalId).HasMaxLength(FieldLimits.ExternalId);
+        b.Property(x => x.Url).HasMaxLength(FieldLimits.Url);
+        b.Property(x => x.Title).HasMaxLength(FieldLimits.OfferTitle);
+        b.Property(x => x.BrandRaw).HasMaxLength(FieldLimits.BrandRaw);
+        b.Property(x => x.ModelRaw).HasMaxLength(FieldLimits.ModelRaw);
+        b.Property(x => x.Ean).HasMaxLength(FieldLimits.OfferEan);
+        b.Property(x => x.ImageUrl).HasMaxLength(FieldLimits.Url);
 
         b.HasIndex(x => new { x.StoreId, x.ExternalId }).IsUnique();
         b.HasIndex(x => x.ProductId);

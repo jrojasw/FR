@@ -76,6 +76,7 @@ public sealed class PriceIngestionService(
         // Si la tienda repite un producto dentro del lote, vale la última aparición.
         var unique = batch
             .Where(i => IsValid(i) || Reject(stats, i))
+            .Select(Sanitize)
             .GroupBy(i => i.ExternalId.Trim())
             .Select(g => g.Last())
             .ToList();
@@ -85,6 +86,8 @@ public sealed class PriceIngestionService(
         foreach (var item in unique)
         {
             var identity = ProductIdentity.From(item);
+            if (identity.Model is { Length: > FieldLimits.Model } longModel)
+                identity = identity with { Model = longModel[..FieldLimits.Model] };
             if (existing.TryGetValue(item.ExternalId.Trim(), out var offer))
             {
                 UpdateOffer(offer, item, now, stats);
@@ -111,6 +114,38 @@ public sealed class PriceIngestionService(
         logger.LogDebug("Producto descartado por datos incompletos: {ExternalId} {Title} {Price}", item.ExternalId, item.Title, item.Price);
         return false;
     }
+
+    /// <summary>
+    /// Recorta cada texto al largo de su columna. Algunas tiendas entregan descripciones
+    /// o URLs enormes en campos que deberían ser cortos; sin esto, un solo producto haría
+    /// fallar el guardado de todo el lote (PostgreSQL 22001).
+    /// </summary>
+    private ScrapedProduct Sanitize(ScrapedProduct item)
+    {
+        var cut = new List<string>();
+        string? Fit(string? value, int max, string field)
+        {
+            if (value is null || value.Length <= max) return value;
+            cut.Add($"{field} ({value.Length} > {max})");
+            return value[..max];
+        }
+
+        var clean = item with
+        {
+            ExternalId = Fit(item.ExternalId.Trim(), FieldLimits.ExternalId, "id")!,
+            Title = Fit(TextNormalizer.CleanWhitespace(item.Title), FieldLimits.OfferTitle, "título")!,
+            Url = Fit(item.Url, FieldLimits.Url, "url")!,
+            ImageUrl = Fit(item.ImageUrl, FieldLimits.Url, "imagen"),
+            Brand = Fit(item.Brand?.Trim(), FieldLimits.BrandRaw, "marca"),
+            Model = Fit(item.Model?.Trim(), FieldLimits.ModelRaw, "modelo"),
+            Ean = Fit(item.Ean?.Trim(), FieldLimits.OfferEan, "ean"),
+        };
+        if (cut.Count > 0)
+            logger.LogWarning("Producto {ExternalId} con campos demasiado largos, se recortaron: {Fields}", clean.ExternalId, string.Join(", ", cut));
+        return clean;
+    }
+
+    private static string? Cut(string? value, int max) => value is null || value.Length <= max ? value : value[..max];
 
     private static bool IsValid(ScrapedProduct item) =>
         !string.IsNullOrWhiteSpace(item.ExternalId)
@@ -218,7 +253,7 @@ public sealed class PriceIngestionService(
             }
         }
 
-        var name = TextNormalizer.CleanWhitespace(item.Title);
+        var name = Cut(TextNormalizer.CleanWhitespace(item.Title), FieldLimits.ProductName)!;
         var product = new Product
         {
             Name = name,
@@ -228,7 +263,7 @@ public sealed class PriceIngestionService(
             Model = identity.Model,
             Ean = identity.Ean,
             ImageUrl = item.ImageUrl,
-            SearchText = TextNormalizer.ToSearchText($"{name} {brand?.Name} {identity.Model} {identity.Ean}"),
+            SearchText = Cut(TextNormalizer.ToSearchText($"{name} {brand?.Name} {identity.Model} {identity.Ean}"), FieldLimits.SearchText)!,
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -246,13 +281,14 @@ public sealed class PriceIngestionService(
         if (product.Ean is null && ean is not null)
         {
             product.Ean = ean;
-            product.SearchText = $"{product.SearchText} {ean}".Trim();
+            product.SearchText = Cut($"{product.SearchText} {ean}".Trim(), FieldLimits.SearchText)!;
         }
     }
 
     private async Task<Brand?> GetOrCreateBrandAsync(string? name, BatchContext context, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
+        name = Cut(name.Trim(), FieldLimits.BrandName)!;
         var slug = TextNormalizer.Slugify(name, 60);
         if (context.Brands.TryGetValue(slug, out var cached)) return cached;
 
@@ -270,7 +306,7 @@ public sealed class PriceIngestionService(
         // Las tiendas suelen informar rutas ("Herramientas/Eléctricas/Taladros"); se usa el último nivel.
         var name = raw?.Split(new[] { '/', '>', '|' },StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault();
         if (string.IsNullOrWhiteSpace(name)) return null;
-        name = TextNormalizer.CleanWhitespace(name);
+        name = Cut(TextNormalizer.CleanWhitespace(name), FieldLimits.CategoryName)!;
         var slug = TextNormalizer.Slugify(name, 60);
         if (context.Categories.TryGetValue(slug, out var cached)) return cached;
 

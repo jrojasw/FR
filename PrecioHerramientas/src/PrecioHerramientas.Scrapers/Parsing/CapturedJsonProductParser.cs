@@ -35,6 +35,11 @@ public static class CapturedJsonProductParser
 
         using (doc)
         {
+            // Easy (Next.js): pageProps.serverProductsResponse.productList[].
+            if (json.Contains("\"serverProductsResponse\"", StringComparison.Ordinal)
+                && EasyNextDataParser.Parse(json, baseUri).Products is { Count: > 0 } easy)
+                return easy;
+
             var products = new List<ScrapedProduct>();
             Visit(doc.RootElement, baseUri, products, depth: 0);
             if (products.Count == 0 && doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("props", out _))
@@ -45,7 +50,8 @@ public static class CapturedJsonProductParser
 
     private static void Visit(JsonElement element, Uri baseUri, List<ScrapedProduct> products, int depth)
     {
-        if (depth > 8) return;
+        // Las respuestas del "assembler" de Oracle Commerce anidan los registros a bastante profundidad.
+        if (depth > 24) return;
         switch (element.ValueKind)
         {
             case JsonValueKind.Array:
@@ -67,7 +73,7 @@ public static class CapturedJsonProductParser
                 if (element.TryGetProperty("attributes", out var attributes) && attributes.ValueKind == JsonValueKind.Object
                     && attributes.TryGetProperty("product.displayName", out _))
                 {
-                    if (ReadOccRecord(attributes, baseUri) is { } product) products.Add(product);
+                    if (ReadOccRecord(element, attributes, baseUri) is { } product) products.Add(product);
                     return;
                 }
                 foreach (var property in element.EnumerateObject()) Visit(property.Value, baseUri, products, depth + 1);
@@ -85,11 +91,11 @@ public static class CapturedJsonProductParser
 
     // ---------- Oracle Commerce Cloud: búsqueda guiada ----------
 
-    private static ScrapedProduct? ReadOccRecord(JsonElement a, Uri baseUri)
+    private static ScrapedProduct? ReadOccRecord(JsonElement record, JsonElement a, Uri baseUri)
     {
-        var name = Attr(a, "product.displayName");
+        var name = Attr(a, "product.displayName") ?? PlainText(Attr(a, "product.longDescription"));
         var id = Attr(a, "sku.repositoryId") ?? Attr(a, "product.repositoryId") ?? Attr(a, "product.id");
-        var route = Attr(a, "product.route");
+        var route = OccRoute(record, a);
         if (name is null || id is null || route is null) return null;
 
         var sale = Number(Attr(a, "sku.activePrice")) ?? Number(Attr(a, "sku.salePrice")) ?? Number(Attr(a, "product.salePrice"));
@@ -112,6 +118,27 @@ public static class CapturedJsonProductParser
             ImageUrl = (Attr(a, "product.primaryFullImageURL") ?? Attr(a, "product.primaryThumbImageURL")) is { } image ? AbsoluteImage(baseUri, image) : null,
         };
     }
+
+    /// <summary>
+    /// Ruta pública del producto: <c>product.route</c> ("/taladro-x/product/123"); si no
+    /// viene, otro atributo "*.route", o la acción de detalle del registro
+    /// (<c>detailsAction.recordState</c>), sin los parámetros de navegación de Endeca.
+    /// </summary>
+    private static string? OccRoute(JsonElement record, JsonElement a)
+    {
+        var route = Attr(a, "product.route")
+            ?? a.EnumerateObject().Where(p => p.Name.EndsWith(".route", StringComparison.OrdinalIgnoreCase)).Select(p => Attr(a, p.Name)).FirstOrDefault(v => v is not null);
+        if (route is null && record.TryGetProperty("detailsAction", out var details) && details.ValueKind == JsonValueKind.Object)
+            route = Str(details, "recordState");
+        if (route is null) return null;
+        var query = route.IndexOf('?');
+        return query >= 0 ? route[..query] : route;
+    }
+
+    private static string? PlainText(string? html) =>
+        html is null ? null : System.Text.RegularExpressions.Regex.Replace(html, "<[^>]+>", " ") is var text && text.Trim().Length > 0
+            ? TextNormalizer.CleanWhitespace(System.Net.WebUtility.HtmlDecode(text))
+            : null;
 
     /// <summary>Los atributos de la búsqueda guiada vienen como arreglos de un string.</summary>
     private static string? Attr(JsonElement a, string key)

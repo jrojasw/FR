@@ -1,0 +1,77 @@
+{
+  "@type": "Page",
+  "contents": [
+    {
+      "@type": "ResultsPageSlot",
+      "mainContent": [
+        {
+          "@type": "Breadcrumbs",
+          "refinementCrumbs": [
+            {
+              "label": "Taladros",
+              "navigationState": "/_/N-1033696118"
+            }
+          ]
+        },
+        {
+          "@type": "ResultsList",
+          "contents": [
+            {
+              "@type": "ResultsList",
+              "records": [
+                {
+                  "attributes": {
+                    "product.repositoryId": [
+                      "IMP-1003"
+                    ]
+                  },
+                  "numRecords": 1,
+                  "records": [
+                    {
+                      "attributes": {
+                        "product.repositoryId": [
+                          "IMP-1003"
+                        ],
+                        "sku.repositoryId": [
+                          "IMP-1003-01"
+                        ],
+                        "product.displayName": [
+                          "Taladro de Banco 350W"
+                        ],
+                        "product.brand": [
+                          "Redline"
+                        ],
+                        "sku.activePrice": [
+                          "119990.0"
+                        ],
+                        "sku.listPrice": [
+                          "129990.0"
+                        ],
+                        "sku.availabilityStatus": [
+                          "INSTOCK"
+                        ],
+                        "product.longDescription": [
+                          "<p>Taladro de Banco 350W con garantía</p>"
+                        ],
+                        "product.primaryThumbImageURL": [
+                          "/ccstore/v1/images/?source=/file/v1/products/IMP-1003.jpg&height=300&width=300"
+                        ],
+                        "product.route": [
+                          "/taladro-de-banco-350w/product/IMP-1003"
+                        ]
+                      },
+                      "numRecords": 1
+                    }
+                  ]
+                }
+              ],
+              "totalNumRecs": 40,
+              "recsPerPage": 36,
+              "firstRecNum": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "@type": "Page",
+  "contents": [
+    {
+      "@type": "ResultsPageSlot",
+      "mainContent": [
+        {
+          "@type": "Breadcrumbs",
+          "refinementCrumbs": [
+            {
+              "label": "Taladros",
+              "navigationState": "/_/N-1033696118"
+            }
+          ]
+        },
+        {
+          "@type": "ResultsList",
+          "contents": [
+            {
+              "@type": "ResultsList",
+              "records": [
+                {
+                  "attributes": {
+                    "product.repositoryId": [
+                      "IMP-1001"
+                    ]
+                  },
+                  "numRecords": 1,
+                  "records": [
+                    {
+                      "attributes": {
+                        "product.repositoryId": [
+                          "IMP-1001"
+                        ],
+                        "sku.repositoryId": [
+                          "IMP-1001-01"
+                        ],
+                        "product.displayName": [
+                          "Taladro Percutor 650W GSB 13 RE"
+                        ],
+                        "product.brand": [
+                          "Bosch"
+                        ],
+                        "sku.activePrice": [
+                          "49990.0"
+                        ],
+                        "sku.listPrice": [
+                          "64990.0"
+                        ],
+                        "sku.availabilityStatus": [
+                          "INSTOCK"
+                        ],
+                        "product.longDescription": [
+                          "<p>Taladro Percutor 650W GSB 13 RE con garantía</p>"
+                        ],
+                        "product.primaryThumbImageURL": [
+                          "/ccstore/v1/images/?source=/file/v1/products/IMP-1001.jpg&height=300&width=300"
+                        ],
+                        "product.route": [
+                          "/taladro-percutor-650w-gsb-13-re/product/IMP-1001"
+                        ]
+                      },
+                      "numRecords": 1
+                    }
+                  ]
+                },
+                {
+                  "attributes": {
+                    "product.repositoryId": [
+                      "IMP-1002"
+                    ]
+                  },
+                  "numRecords": 1,
+                  "records": [
+                    {
+                      "attributes": {
+                        "product.repositoryId": [
+                          "IMP-1002"
+                        ],
+                        "sku.repositoryId": [
+                          "IMP-1002-01"
+                        ],
+                        "product.displayName": [
+                          "Taladro Inalámbrico 18V DDF485Z"
+                        ],
+                        "product.brand": [
+                          "Makita"
+                        ],
+                        "sku.activePrice": [
+                          "89990.0"
+                        ],
+                        "sku.listPrice": [
+                          "89990.0"
+                        ],
+                        "sku.availabilityStatus": [
+                          "OUTOFSTOCK"
+                        ],
+                        "product.longDescription": [
+                          "<p>Taladro Inalámbrico 18V DDF485Z con garantía</p>"
+                        ],
+                        "product.primaryThumbImageURL": [
+                          "/ccstore/v1/images/?source=/file/v1/products/IMP-1002.jpg&height=300&width=300"
+                        ]
+                      },
+                      "numRecords": 1,
+                      "detailsAction": {
+                        "recordState": "/taladro-inalambrico-18v-ddf485z/product/IMP-1002?N=1033696118&Nrpp=36"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "totalNumRecs": 40,
+              "recsPerPage": 36,
+              "firstRecNum": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

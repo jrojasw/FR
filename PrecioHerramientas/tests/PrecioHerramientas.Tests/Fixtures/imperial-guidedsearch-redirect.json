@@ -1,0 +1,33 @@
+{
+  "@type": "Page",
+  "contents": [
+    {
+      "@type": "ResultsPageSlot",
+      "navigation": [
+        {
+          "@type": "GuidedNavigation",
+          "refinements": [
+            {
+              "label": "Herramientas eléctricas",
+              "navigationState": "/_/N-999111222",
+              "count": 120
+            },
+            {
+              "label": "Bosch",
+              "navigationState": "/_/N-555666777",
+              "count": 30
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "endeca:redirect": {
+    "@type": "Redirect",
+    "link": {
+      "@class": "com.endeca.infront.cartridge.model.UrlAction",
+      "url": "/taladros/category/000300030352",
+      "navigationState": "/_/N-1033696118"
+    }
+  }
+}

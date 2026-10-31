@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PrecioHerramientas.Core.Entities;
 using PrecioHerramientas.Core.Scraping;
 using PrecioHerramientas.Tests.Support;
 
@@ -136,5 +137,35 @@ public class PriceIngestionServiceTests : IDisposable
         Assert.Equal(2, stats.ItemsRejected);
         var offer = await _test.Db.Offers.SingleAsync();
         Assert.Equal(900m, offer.Price);
+    }
+
+    [Fact]
+    public async Task Recorta_campos_demasiado_largos_en_vez_de_fallar()
+    {
+        var a = await _test.AddStoreAsync("a");
+        var item = Item(new string('9', 250), "Taladro " + new string('x', 700) + " DCD778D2", 1000, brand: new string('B', 300), model: string.Concat(Enumerable.Repeat("M1", 150))) with
+        {
+            Url = "https://tienda.example/" + new string('u', 1500),
+            ImageUrl = "https://img.example/" + new string('i', 1500),
+            Ean = new string('7', 300),
+            Category = "Herramientas/" + new string('c', 400),
+        };
+
+        var stats = await _test.IngestAsync(a, item);
+
+        Assert.Equal(0, stats.ItemsRejected);
+        var offer = await _test.Db.Offers.Include(o => o.Product).ThenInclude(p => p.Brand).SingleAsync();
+        Assert.Equal(FieldLimits.ExternalId, offer.ExternalId.Length);
+        Assert.Equal(FieldLimits.OfferTitle, offer.Title.Length);
+        Assert.Equal(FieldLimits.Url, offer.Url.Length);
+        Assert.Equal(FieldLimits.Url, offer.ImageUrl!.Length);
+        Assert.Equal(FieldLimits.BrandRaw, offer.BrandRaw!.Length);
+        Assert.Equal(FieldLimits.ModelRaw, offer.ModelRaw!.Length);
+        Assert.Equal(FieldLimits.OfferEan, offer.Ean!.Length);
+        Assert.True(offer.Product.Name.Length <= FieldLimits.ProductName);
+        Assert.True(offer.Product.Model!.Length <= FieldLimits.Model);
+        Assert.True(offer.Product.SearchText.Length <= FieldLimits.SearchText);
+        Assert.True(offer.Product.Brand!.Name.Length <= FieldLimits.BrandName);
+        Assert.True((await _test.Db.Categories.SingleAsync()).Name.Length <= FieldLimits.CategoryName);
     }
 }

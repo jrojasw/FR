@@ -57,14 +57,14 @@ namespace PrecioHerramientas.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.Property<string>("Slug")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("slug");
 
                     b.HasKey("Id")
@@ -88,14 +88,14 @@ namespace PrecioHerramientas.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.Property<string>("Slug")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("slug");
 
                     b.HasKey("Id")
@@ -118,19 +118,19 @@ namespace PrecioHerramientas.Infrastructure.Persistence.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("BrandRaw")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("brand_raw");
 
                     b.Property<string>("Ean")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("ean");
 
                     b.Property<string>("ExternalId")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("external_id");
 
                     b.Property<DateTime>("FirstSeenAt")
@@ -160,8 +160,8 @@ namespace PrecioHerramientas.Infrastructure.Persistence.Migrations
                         .HasColumnName("list_price");
 
                     b.Property<string>("ModelRaw")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("model_raw");
 
                     b.Property<decimal?>("PreviousPrice")
@@ -184,8 +184,8 @@ namespace PrecioHerramientas.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("title");
 
                     b.Property<string>("Url")
@@ -287,14 +287,14 @@ namespace PrecioHerramientas.Infrastructure.Persistence.Migrations
                         .HasColumnName("image_url");
 
                     b.Property<string>("Model")
-                        .HasMaxLength(60)
-                        .HasColumnType("character varying(60)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("model");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("name");
 
                     b.Property<int>("OfferCount")
@@ -303,14 +303,14 @@ namespace PrecioHerramientas.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("SearchText")
                         .IsRequired()
-                        .HasMaxLength(600)
-                        .HasColumnType("character varying(600)")
+                        .HasMaxLength(1500)
+                        .HasColumnType("character varying(1500)")
                         .HasColumnName("search_text");
 
                     b.Property<string>("Slug")
                         .IsRequired()
-                        .HasMaxLength(140)
-                        .HasColumnType("character varying(140)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("slug");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -436,14 +436,14 @@ namespace PrecioHerramientas.Infrastructure.Persistence.Migrations
                         .HasColumnName("key");
 
                     b.Property<string>("LogoUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("logo_url");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.HasKey("Id")

@@ -153,6 +153,72 @@ public abstract class BrowserCaptureScraperBase(IServiceProvider services, IOpti
         return JsonLdProductExtractor.Extract(document, BaseUri);
     }
 
+    // ---------- Descarga directa con respaldo en navegador ----------
+
+    private bool _httpBlocked;
+    private bool _browserWarmedUp;
+
+    /// <summary>
+    /// GET de una página o API de la tienda. Primero por HTTP con encabezados de navegador;
+    /// si la tienda lo bloquea (401/403/429/503), el resto de la ejecución usa Chromium: se
+    /// abre la portada una vez (cookies del sitio) y se pide la URL dentro de esa sesión.
+    /// Devuelve null si la URL no existe (404).
+    /// </summary>
+    protected async Task<string?> FetchAsync(string url, bool json, CancellationToken ct)
+    {
+        var httpFactory = services.GetService<IHttpClientFactory>();
+        if (!_httpBlocked && httpFactory is not null)
+        {
+            try
+            {
+                return await HttpGetAsync(httpFactory, url, json, ct);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Forbidden or System.Net.HttpStatusCode.Unauthorized
+                or System.Net.HttpStatusCode.TooManyRequests or System.Net.HttpStatusCode.ServiceUnavailable)
+            {
+                _httpBlocked = true;
+                Logger.LogInformation("{Store}: HTTP respondió {Status}; se usará Chromium", Store.Key, (int)ex.StatusCode!.Value);
+            }
+        }
+
+        var session = await SessionAsync(ct);
+        if (!_browserWarmedUp)
+        {
+            await session.LoadAsync(BaseUri.AbsoluteUri, _ => false, null, ct);
+            _browserWarmedUp = true;
+        }
+        return json
+            ? await session.GetAsync(url, ct)
+            : (await session.LoadAsync(url, _ => false, null, ct))?.Html;
+    }
+
+    private async Task<string?> HttpGetAsync(IHttpClientFactory factory, string url, bool json, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        if (json)
+        {
+            request.Headers.Accept.ParseAdd("application/json, text/plain, */*");
+            request.Headers.Referrer = BaseUri;
+            request.Headers.TryAddWithoutValidation("Sec-Fetch-Dest", "empty");
+            request.Headers.TryAddWithoutValidation("Sec-Fetch-Mode", "cors");
+            request.Headers.TryAddWithoutValidation("Sec-Fetch-Site", "same-origin");
+        }
+        else
+        {
+            request.Headers.Accept.ParseAdd("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+            request.Headers.TryAddWithoutValidation("Upgrade-Insecure-Requests", "1");
+            request.Headers.TryAddWithoutValidation("Sec-Fetch-Dest", "document");
+            request.Headers.TryAddWithoutValidation("Sec-Fetch-Mode", "navigate");
+            request.Headers.TryAddWithoutValidation("Sec-Fetch-Site", "none");
+        }
+
+        using var response = await factory.CreateClient(HttpClientNames.Scraper).SendAsync(request, ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException($"HTTP {(int)response.StatusCode} en {url}", null, response.StatusCode);
+        return await response.Content.ReadAsStringAsync(ct);
+    }
+
     private async Task<IBrowserSession> SessionAsync(CancellationToken ct) =>
         _session ??= await services.GetRequiredService<IBrowserSessionFactory>().OpenAsync(ct);
 

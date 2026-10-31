@@ -59,7 +59,9 @@ PrecioHerramientas.sln
    sin stock, salvo que la ejecución haya traído menos del 50 % de lo esperado
    (`Ingestion:MinCoverageToMarkUnavailable`), para no "vaciar" una tienda cuando el
    scraper se rompe a medias.
-5. Cada ejecución queda registrada en `scrape_runs` (visible en `/tiendas`). Queda como
+5. Textos más largos que su columna (`FieldLimits`) se recortan antes de guardar, con
+   una advertencia en el log: un producto con un campo enorme no hace fallar la tienda.
+6. Cada ejecución queda registrada en `scrape_runs` (visible en `/tiendas`). Queda como
    **fallida** ("Con errores") si todas las búsquedas fallaron (404, bloqueo, respuesta
    que no es la esperada) o si ninguna devolvió productos; si falla solo alguna, la
    ejecución sigue y el log indica cuál.
@@ -122,9 +124,9 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 
 | Clave | Tienda | Plataforma / técnica |
 | --- | --- | --- |
-| `easy` | Easy | Chromium: abre `https://www.easy.cl/search/{término}` y lee las respuestas JSON que el sitio pide para pintar el listado (VTEX catálogo, Intelligent Search o GraphQL, reconocidas por su forma), con las cookies y encabezados del propio sitio. La API de catálogo directa ya no sirve (404 en www.easy.cl, 500 en el dominio interno de VTEX) |
+| `easy` | Easy | JSON de Next.js por HTTP: la página `/search/{término}` trae en `__NEXT_DATA__` los productos (`pageProps.serverProductsResponse.productList`), el total (`recordsFiltered`) y el `buildId`; las páginas siguientes salen de `/_next/data/{buildId}/search/{término}.json?search={término}&page=N`. El `buildId` se lee en cada ejecución (y se relee si Easy publica una versión nueva). Si Easy bloquea HTTP se usa Chromium; si la página no trae ese JSON, se leen las respuestas que pide la página |
 | `sodimac` | Sodimac | Búsqueda `/sodimac-cl/buscar?Ntt=…`; lee el JSON `__NEXT_DATA__` (`props.pageProps.results`). Pide primero por HTTP y, si la tienda lo bloquea o no entrega ese JSON, cambia a Chromium (Playwright). Ignora el precio con tarjeta CMR; el precio tachado queda como precio normal |
-| `imperial` | Imperial | Chromium (HTTP directo responde 403): abre `/searchresults?Ntt={término}`, sigue la redirección del sitio a la categoría y lee las respuestas JSON del listado (Oracle Commerce Cloud: búsqueda guiada o `/ccstore/v1/products`). Respaldo: grilla renderizada y JSON-LD. Una búsqueda que empieza con `/` se usa como ruta de categoría |
+| `imperial` | Imperial | API de búsqueda guiada de Oracle Commerce: `/ccstore/v1/assembler/pages/Default/services/guidedsearch?Ntt={término}&searchType=simple&Nrpp=36` resuelve el término (p. ej. "taladro" → `N-1033696118`) y `/guidedsearch/_/N-…?Nrpp=36&No={offset}` entrega los productos (`sku.activePrice`, `sku.availabilityStatus`, `product.route`…) y `totalNumRecs`. HTTP con encabezados de navegador; si responde 403, la API se pide dentro de una sesión de Chromium. Una búsqueda `N-…` se usa directo como categoría |
 | `demo-norte`, `demo-sur` | Ficticias | Datos generados para desarrollo |
 
 > **Importante:** las URLs, el JSON y los selectores de Easy, Sodimac e Imperial se
