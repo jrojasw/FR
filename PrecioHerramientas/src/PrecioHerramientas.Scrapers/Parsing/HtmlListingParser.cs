@@ -89,29 +89,43 @@ public static class HtmlListingParser
     private static string? ReadSku(IElement card, ListingSelectors selectors)
     {
         if (selectors.SkuAttribute is null) return null;
-        var element = string.IsNullOrEmpty(selectors.Sku) ? card : card.QuerySelector(selectors.Sku);
+        var element = string.IsNullOrEmpty(selectors.Sku) ? card : First(card, selectors.Sku);
         var value = element?.GetAttribute(selectors.SkuAttribute);
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private static string? Text(IElement card, string selector)
     {
-        var text = card.QuerySelector(selector)?.TextContent;
+        var text = First(card, selector)?.TextContent;
         return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
     }
 
     private static string? Attr(IElement card, string selector, string attribute)
     {
         // Permite que la propia tarjeta sea el enlace (selector ":scope").
-        var element = selector == ":scope" ? card : card.QuerySelector(selector);
+        var element = selector == ":scope" ? card : First(card, selector);
         var value = element?.GetAttribute(attribute);
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    /// <summary>
+    /// Con una lista "a, b, c" prueba cada alternativa en orden y devuelve la primera que
+    /// exista. (QuerySelector con la lista completa devolvería la primera del documento,
+    /// que puede ser p. ej. el precio tachado en vez del precio final.)
+    /// </summary>
+    private static IElement? First(IElement card, string selectorList)
+    {
+        foreach (var selector in selectorList.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (card.QuerySelector(selector) is { } element) return element;
+        }
+        return null;
     }
 
     // Prefiere atributos de máquina (content, data-price) por sobre el texto visible.
     private static string? PriceText(IElement card, string selector)
     {
-        var element = card.QuerySelector(selector);
+        var element = First(card, selector);
         if (element is null) return null;
         return element.GetAttribute("content") ?? element.GetAttribute("data-price") ?? element.TextContent;
     }

@@ -25,8 +25,7 @@ ARG INSTALL_PLAYWRIGHT=true
 
 # La imagen base ya escucha en el puerto 8080 (ASPNETCORE_HTTP_PORTS).
 ENV ASPNETCORE_ENVIRONMENT=Production \
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
-    DataProtection__KeysPath=/app/keys
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 WORKDIR /app
 COPY --from=build /app/publish .
@@ -38,8 +37,7 @@ RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
         && "$NODE" ./.playwright/package/cli.js install --with-deps chromium \
         && rm -rf /var/lib/apt/lists/* \
         && chmod -R a+rX /ms-playwright; \
-    fi \
-    && mkdir -p /app/keys && chown "$APP_UID" /app/keys
+    fi
 
 USER $APP_UID
 EXPOSE 8080

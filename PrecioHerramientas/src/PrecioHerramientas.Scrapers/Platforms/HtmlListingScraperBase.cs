@@ -70,7 +70,7 @@ public abstract class HtmlListingScraperBase : StoreScraperBase
         ? new Uri(BaseUri, template.Replace("{query}", Uri.EscapeDataString(query)).Replace("{page}", page.ToString())).AbsoluteUri
         : BuildPageUrl(query, page);
 
-    protected override async IAsyncEnumerable<ScrapedProduct> ScrapeQueryAsync(string query, [EnumeratorCancellation] CancellationToken ct)
+    protected override async IAsyncEnumerable<ScrapedProduct> ScrapeQueryAsync(string query, QueryContext context, [EnumeratorCancellation] CancellationToken ct)
     {
         var browsing = BrowsingContext.New(Configuration.Default);
         string? previousFirstId = null;
@@ -79,7 +79,11 @@ public abstract class HtmlListingScraperBase : StoreScraperBase
         {
             var url = PageUrl(query, page);
             var html = await FetchAsync(url, ct);
-            if (html is null) yield break;
+            if (html is null)
+            {
+                if (page == 1) context.Failure = $"página no encontrada (404) en {url}";
+                yield break;
+            }
 
             using var document = await browsing.OpenAsync(req => req.Content(html).Address(url), ct);
             var products = ParsePage(document, query);

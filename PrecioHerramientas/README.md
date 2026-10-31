@@ -59,7 +59,10 @@ PrecioHerramientas.sln
    sin stock, salvo que la ejecución haya traído menos del 50 % de lo esperado
    (`Ingestion:MinCoverageToMarkUnavailable`), para no "vaciar" una tienda cuando el
    scraper se rompe a medias.
-5. Cada ejecución queda registrada en `scrape_runs` (visible en `/tiendas`).
+5. Cada ejecución queda registrada en `scrape_runs` (visible en `/tiendas`). Queda como
+   **fallida** ("Con errores") si todas las búsquedas fallaron (404, bloqueo, respuesta
+   que no es la esperada) o si ninguna devolvió productos; si falla solo alguna, la
+   ejecución sigue y el log indica cuál.
 
 ## Desarrollo local
 
@@ -107,6 +110,8 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 | `Scrapers:Stores:<clave>:Selectors` | Sobrescribe selectores CSS de scrapers HTML sin recompilar (`Card`, `Title`, `Link`, `Price`, `ListPrice`, `Image`, `Brand`, `SkuAttribute`, `OutOfStock`, `WaitFor`) |
 | `Scrapers:Stores:<clave>:UsePlaywright` | Scrapers HTML: `true` = siempre navegador, `false` = solo HTTP, vacío = lo que defina la tienda (Sodimac: HTTP con respaldo en navegador) |
 | `Scrapers:Stores:<clave>:SearchUrlTemplate` | Scrapers HTML: URL de búsqueda con `{query}` y `{page}`, para ajustarla sin recompilar |
+| `Scrapers:Stores:<clave>:ApiBaseUrl` | Tiendas VTEX: host de la API de catálogo (Easy: `https://easycl.vtexcommercestable.com.br`) |
+| `Scrapers:BrowserUserAgent` | User-Agent de Playwright; vacío = Chrome de escritorio con la versión real del Chromium instalado |
 | `Scrapers:Stores:<clave>:DelayBetweenRequestsMs` | Pausa entre solicitudes a la tienda |
 | `Scrapers:Stores:<clave>:MaxPagesPerQuery` | Tope de páginas por búsqueda |
 
@@ -117,9 +122,9 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 
 | Clave | Tienda | Plataforma / técnica |
 | --- | --- | --- |
-| `easy` | Easy | API pública de catálogo VTEX (`/api/catalog_system/pub/products/search`), JSON con precio, precio normal, stock, marca, referencia y EAN |
+| `easy` | Easy | API de catálogo VTEX (`/api/catalog_system/pub/products/search`) en el dominio de la cuenta, `easycl.vtexcommercestable.com.br`: www.easy.cl tiene frontend propio y esa ruta responde 404. JSON con precio, precio normal, stock, marca, referencia y EAN; URL pública `www.easy.cl/{linkText}/p` |
 | `sodimac` | Sodimac | Búsqueda `/sodimac-cl/buscar?Ntt=…`; lee el JSON `__NEXT_DATA__` (`props.pageProps.results`). Pide primero por HTTP y, si la tienda lo bloquea o no entrega ese JSON, cambia a Chromium (Playwright). Ignora el precio con tarjeta CMR; el precio tachado queda como precio normal |
-| `imperial` | Imperial | HTML con AngleSharp mediante selectores configurables; si no encuentra la grilla, lee JSON-LD |
+| `imperial` | Imperial | Siempre con Chromium (HTTP directo responde 403), con User-Agent y encabezados de navegador de escritorio. Lee `__NEXT_DATA__` si el sitio usa la plataforma del grupo Sodimac; si no, la grilla con selectores (cada campo tiene varias alternativas, en orden de prioridad) y, como último recurso, JSON-LD |
 | `demo-norte`, `demo-sur` | Ficticias | Datos generados para desarrollo |
 
 > **Importante:** las URLs, el JSON y los selectores de Easy, Sodimac e Imperial se
@@ -179,7 +184,6 @@ en Railway no hace falta armar la cadena de conexión a mano.
 
    La imagen ya instala Chromium para Sodimac (`INSTALL_PLAYWRIGHT` es `true` por defecto).
 5. *Settings* → *Networking* → *Generate Domain*. La web queda en `https://<nombre>.up.railway.app`.
-6. Opcional: un *Volume* montado en `/app/keys` para conservar las claves de ASP.NET Core entre despliegues.
 
 ## Despliegue en un VPS Linux con Docker
 
@@ -198,8 +202,8 @@ docker compose up -d --build
 - La imagen incluye Chromium y sus dependencias (para Sodimac), lo que suma
   ~400 MB. Para una imagen liviana sin navegador use `INSTALL_PLAYWRIGHT=false`
   en `.env` y deshabilite Sodimac.
-- Datos persistentes: volúmenes `pgdata` (base de datos), `dpkeys` (claves de
-  ASP.NET Core) y `caddy_data` (certificados).
+- Datos persistentes: volúmenes `pgdata` (base de datos, que también guarda las
+  claves de ASP.NET Core Data Protection) y `caddy_data` (certificados).
 
 Respaldo de la base:
 

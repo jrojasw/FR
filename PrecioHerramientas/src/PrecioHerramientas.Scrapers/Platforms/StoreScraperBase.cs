@@ -31,21 +31,47 @@ public abstract class StoreScraperBase : IStoreScraper
     {
         // Un mismo producto aparece en varias búsquedas; se entrega una sola vez.
         var seen = new HashSet<string>(StringComparer.Ordinal);
+        var failures = new List<string>();
         foreach (var query in Queries)
         {
             int count = 0;
-            await foreach (var product in ScrapeQueryAsync(query, ct))
+            var context = new QueryContext();
+            await foreach (var product in ScrapeQueryAsync(query, context, ct))
             {
                 if (!seen.Add(product.ExternalId)) continue;
                 count++;
                 yield return product;
             }
-            Logger.LogInformation("{Store}: \"{Query}\" entregó {Count} productos nuevos", Store.Key, query, count);
+            if (context.Failure is { } failure)
+            {
+                failures.Add($"\"{query}\": {failure}");
+                Logger.LogWarning("{Store}: \"{Query}\" falló: {Failure}", Store.Key, query, failure);
+            }
+            else
+            {
+                Logger.LogInformation("{Store}: \"{Query}\" entregó {Count} productos nuevos", Store.Key, query, count);
+            }
         }
+
+        // Si todo falló o no apareció nada, la ejecución no puede quedar como "OK".
+        if (Queries.Count > 0 && failures.Count == Queries.Count)
+            throw new ScrapeFailedException($"{Store.Name}: todas las búsquedas fallaron. {string.Join("; ", failures.Take(3))}");
+        if (Queries.Count > 0 && seen.Count == 0)
+            throw new ScrapeFailedException($"{Store.Name}: ninguna búsqueda devolvió productos; revise la URL de búsqueda y los selectores.");
     }
 
-    protected abstract IAsyncEnumerable<ScrapedProduct> ScrapeQueryAsync(string query, CancellationToken ct);
+    /// <summary>Lo que una búsqueda informa al terminar, además de sus productos.</summary>
+    protected sealed class QueryContext
+    {
+        /// <summary>Motivo si la búsqueda no se pudo hacer (p. ej. "HTTP 404 en ..."). Nulo si respondió bien.</summary>
+        public string? Failure { get; set; }
+    }
+
+    protected abstract IAsyncEnumerable<ScrapedProduct> ScrapeQueryAsync(string query, QueryContext context, CancellationToken ct);
 
     protected Task PoliteDelayAsync(CancellationToken ct) =>
         Options.DelayBetweenRequestsMs > 0 ? Task.Delay(Options.DelayBetweenRequestsMs, ct) : Task.CompletedTask;
 }
+
+/// <summary>La tienda no entregó datos utilizables; la ejecución se registra como fallida.</summary>
+public sealed class ScrapeFailedException(string message) : Exception(message);

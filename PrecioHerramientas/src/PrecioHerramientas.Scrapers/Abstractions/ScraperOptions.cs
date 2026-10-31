@@ -8,6 +8,12 @@ public sealed class ScraperOptions
     public string UserAgent { get; set; } =
         "Mozilla/5.0 (compatible; PrecioHerramientasBot/1.0; +https://example.cl/bot)";
 
+    /// <summary>
+    /// User-Agent del navegador (Playwright). Vacío = el de Chrome de escritorio con la
+    /// versión real del Chromium instalado, sin la marca "HeadlessChrome".
+    /// </summary>
+    public string? BrowserUserAgent { get; set; }
+
     public int RequestTimeoutSeconds { get; set; } = 30;
 
     /// <summary>Configuración por tienda, indexada por la clave del scraper.</summary>
@@ -50,4 +56,7 @@ public sealed class StoreScraperOptions
     /// para ajustarla sin recompilar si la tienda cambia su sitio.
     /// </summary>
     public string? SearchUrlTemplate { get; set; }
+
+    /// <summary>Tiendas VTEX: host de la API de catálogo, si no es el dominio de la tienda.</summary>
+    public string? ApiBaseUrl { get; set; }
 }

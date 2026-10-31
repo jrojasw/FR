@@ -23,9 +23,11 @@ builder.Services.AddCore();
 builder.Services.Configure<IngestionOptions>(configuration.GetSection(IngestionOptions.SectionName));
 builder.Services.AddInfrastructure(configuration);
 builder.Services.AddScrapers(configuration);
-// En Docker las claves deben sobrevivir a reinicios (antiforgery del dashboard de Hangfire).
-if (configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath)
-    builder.Services.AddDataProtection().SetApplicationName("PrecioHerramientas").PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+// Las claves de Data Protection (antiforgery del dashboard de Hangfire) se guardan en
+// PostgreSQL: en Railway/Docker el disco del contenedor se pierde en cada despliegue.
+builder.Services.AddDataProtection()
+    .SetApplicationName("PrecioHerramientas")
+    .PersistKeysToDbContext<AppDbContext>();
 
 builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database");
 

@@ -22,7 +22,16 @@ public abstract class VtexScraperBase(IHttpClientFactory httpClientFactory, IOpt
     private const int PageSize = 50;
     private const int MaxOffset = 2500;
 
-    protected override async IAsyncEnumerable<ScrapedProduct> ScrapeQueryAsync(string query, [EnumeratorCancellation] CancellationToken ct)
+    /// <summary>
+    /// Host de la API de catálogo. Por defecto el de la tienda, pero muchas tiendas VTEX
+    /// con frontend propio ya no la exponen en su dominio y solo responde en
+    /// <c>https://{cuenta}.vtexcommercestable.com.br</c>. Configurable con <c>ApiBaseUrl</c>.
+    /// </summary>
+    protected virtual string DefaultApiBaseUrl => Store.BaseUrl;
+
+    protected Uri ApiBaseUri => new(Options.ApiBaseUrl is { Length: > 0 } url ? url : DefaultApiBaseUrl);
+
+    protected override async IAsyncEnumerable<ScrapedProduct> ScrapeQueryAsync(string query, QueryContext context, [EnumeratorCancellation] CancellationToken ct)
     {
         var client = httpClientFactory.CreateClient(HttpClientNames.Scraper);
         for (int page = 0; page < Options.MaxPagesPerQuery; page++)
@@ -31,17 +40,25 @@ public abstract class VtexScraperBase(IHttpClientFactory httpClientFactory, IOpt
             if (to >= MaxOffset) yield break;
 
             var url = BuildSearchUrl(query, from, to);
-            List<VtexProduct>? products;
+            List<VtexProduct>? products = null;
             using (var response = await client.GetAsync(url, ct))
             {
                 if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest)
                 {
-                    Logger.LogWarning("{Store}: VTEX respondió {Status} para {Url}", Store.Key, (int)response.StatusCode, url);
+                    if (page == 0) context.Failure = $"HTTP {(int)response.StatusCode} en {url}";
                     yield break;
                 }
                 response.EnsureSuccessStatusCode();
                 await using var stream = await response.Content.ReadAsStreamAsync(ct);
-                products = await JsonSerializer.DeserializeAsync<List<VtexProduct>>(stream, JsonOptions, ct);
+                try
+                {
+                    products = await JsonSerializer.DeserializeAsync<List<VtexProduct>>(stream, JsonOptions, ct);
+                }
+                catch (JsonException)
+                {
+                    // Suele ser una página HTML (bloqueo o redirección) en lugar del JSON de VTEX.
+                    if (page == 0) context.Failure = $"la respuesta de {url} no es JSON de VTEX";
+                }
             }
 
             if (products is null || products.Count == 0) yield break;
@@ -63,12 +80,17 @@ public abstract class VtexScraperBase(IHttpClientFactory httpClientFactory, IOpt
         var filter = query.StartsWith('/')
             ? $"fq=C:{Uri.EscapeDataString(query)}"
             : $"ft={Uri.EscapeDataString(query)}";
-        return new Uri(BaseUri, $"/api/catalog_system/pub/products/search?{filter}&_from={from}&_to={to}").AbsoluteUri;
+        return new Uri(ApiBaseUri, $"/api/catalog_system/pub/products/search?{filter}&_from={from}&_to={to}").AbsoluteUri;
     }
 
     public IEnumerable<ScrapedProduct> Map(VtexProduct product)
     {
-        if (product.Items is null || string.IsNullOrWhiteSpace(product.Link)) yield break;
+        if (product.Items is null) yield break;
+        // La URL pública se arma con linkText: "link" puede apuntar al dominio interno de VTEX.
+        var url = !string.IsNullOrWhiteSpace(product.LinkText)
+            ? new Uri(BaseUri, $"/{product.LinkText}/p").AbsoluteUri
+            : !string.IsNullOrWhiteSpace(product.Link) ? new Uri(BaseUri, new Uri(BaseUri, product.Link).PathAndQuery).AbsoluteUri : null;
+        if (url is null) yield break;
 
         var category = product.Categories?.FirstOrDefault()?.Trim('/');
         foreach (var item in product.Items)
@@ -86,7 +108,7 @@ public abstract class VtexScraperBase(IHttpClientFactory httpClientFactory, IOpt
             {
                 ExternalId = item.ItemId!,
                 Title = title,
-                Url = new Uri(BaseUri, product.Link).ToString(),
+                Url = url,
                 Price = offer.Price.Value,
                 ListPrice = offer.ListPrice is > 0 ? offer.ListPrice : offer.PriceWithoutDiscount,
                 IsAvailable = offer.IsAvailable ?? offer.AvailableQuantity > 0,
@@ -108,6 +130,7 @@ public abstract class VtexScraperBase(IHttpClientFactory httpClientFactory, IOpt
         public string? Brand { get; set; }
         public string? ProductReference { get; set; }
         public string? Link { get; set; }
+        public string? LinkText { get; set; }
         public List<string>? Categories { get; set; }
         public List<VtexItem>? Items { get; set; }
     }

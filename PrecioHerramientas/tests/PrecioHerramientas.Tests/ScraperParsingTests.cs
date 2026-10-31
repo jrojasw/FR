@@ -6,6 +6,7 @@ using PrecioHerramientas.Core.Scraping;
 using PrecioHerramientas.Scrapers.Abstractions;
 using PrecioHerramientas.Scrapers.Http;
 using PrecioHerramientas.Scrapers.Parsing;
+using PrecioHerramientas.Scrapers.Platforms;
 using PrecioHerramientas.Scrapers.Stores;
 using PrecioHerramientas.Tests.Support;
 
@@ -25,22 +26,28 @@ public class ScraperParsingTests
         return list;
     }
 
+    private static EasyScraper Easy(HttpMessageHandler handler, IOptions<ScraperOptions>? options = null) =>
+        new(new FakeHttpClientFactory(handler), options ?? OptionsFor(EasyScraper.Key, "taladro"), NullLogger<EasyScraper>.Instance);
+
     [Fact]
-    public async Task Vtex_mapea_precios_stock_y_variantes_y_pagina()
+    public async Task Easy_consulta_la_API_VTEX_interna_y_mapea_precios_stock_y_variantes()
     {
         var handler = new FakeHttpHandler(req => FakeHttpHandler.Ok(
             req.RequestUri!.Query.Contains("_from=0&") ? Fixture.Read("vtex-search.json") : "[]"));
-        var scraper = new EasyScraper(new FakeHttpClientFactory(handler), OptionsFor(EasyScraper.Key, "taladro"), NullLogger<EasyScraper>.Instance);
 
-        var products = await CollectAsync(scraper.ScrapeAsync());
+        var products = await CollectAsync(Easy(handler).ScrapeAsync());
 
         // El ítem con precio 0 se descarta; la página trae menos de 50 productos, así que no pide la siguiente.
         Assert.Equal(2, products.Count);
-        Assert.Single(handler.Requests);
-        Assert.Contains("ft=taladro", handler.Requests[0].Query);
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("easycl.vtexcommercestable.com.br", request.Host);   // www.easy.cl ya no expone la API
+        Assert.Equal("/api/catalog_system/pub/products/search", request.AbsolutePath);
+        Assert.Contains("ft=taladro", request.Query);
 
         var taladro = products[0];
         Assert.Equal("55001", taladro.ExternalId);
+        // La URL pública se arma con linkText, aunque "link" apunte al dominio de VTEX.
+        Assert.Equal("https://www.easy.cl/taladro-percutor-inalambrico-20v-dcd778d2/p", taladro.Url);
         Assert.Equal(179990m, taladro.Price);
         Assert.Equal(219990m, taladro.ListPrice);
         Assert.True(taladro.IsAvailable);
@@ -56,16 +63,65 @@ public class ScraperParsingTests
     }
 
     [Fact]
-    public async Task HtmlListing_lee_tarjetas_con_selectores()
+    public async Task Easy_falla_la_ejecucion_si_todas_las_busquedas_dan_404()
     {
-        var handler = new FakeHttpHandler(req => req.RequestUri!.Query.Contains("p=1")
-            ? FakeHttpHandler.Ok(Fixture.Read("listing.html"), "text/html")
-            : FakeHttpHandler.Ok("<html><body></body></html>", "text/html"));
-        var services = Fetchers(new HttpPageFetcher(new FakeHttpClientFactory(handler), NullLogger<HttpPageFetcher>.Instance));
-        var scraper = new ImperialScraper(services, OptionsFor(ImperialScraper.Key, "taladro"), NullLogger<ImperialScraper>.Instance);
+        var handler = new FakeHttpHandler(_ => new HttpResponseMessage(System.Net.HttpStatusCode.NotFound));
+        var scraper = Easy(handler, OptionsFor(EasyScraper.Key, "taladro", "esmeril angular"));
 
-        var products = await CollectAsync(scraper.ScrapeAsync());
+        var error = await Assert.ThrowsAsync<ScrapeFailedException>(() => CollectAsync(scraper.ScrapeAsync()));
 
+        Assert.Contains("todas las búsquedas fallaron", error.Message);
+        Assert.Contains("HTTP 404", error.Message);
+        Assert.Equal(2, handler.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Easy_tolera_que_falle_solo_una_busqueda()
+    {
+        var handler = new FakeHttpHandler(req => req.RequestUri!.Query.Contains("ft=taladro") && req.RequestUri.Query.Contains("_from=0&")
+            ? FakeHttpHandler.Ok(Fixture.Read("vtex-search.json"))
+            : new HttpResponseMessage(System.Net.HttpStatusCode.NotFound));
+
+        var products = await CollectAsync(Easy(handler, OptionsFor(EasyScraper.Key, "taladro", "esmeril angular")).ScrapeAsync());
+
+        Assert.Equal(2, products.Count);
+    }
+
+    [Fact]
+    public async Task Easy_falla_si_la_API_responde_HTML_en_vez_de_JSON()
+    {
+        var handler = new FakeHttpHandler(_ => FakeHttpHandler.Ok("<html>Acceso denegado</html>", "text/html"));
+
+        await Assert.ThrowsAsync<ScrapeFailedException>(() => CollectAsync(Easy(handler).ScrapeAsync()));
+    }
+
+    [Fact]
+    public async Task Easy_permite_cambiar_el_host_de_la_API_por_configuracion()
+    {
+        var handler = new FakeHttpHandler(_ => FakeHttpHandler.Ok(Fixture.Read("vtex-search.json")));
+        var options = Options.Create(new ScraperOptions
+        {
+            Stores = { [EasyScraper.Key] = new StoreScraperOptions { DelayBetweenRequestsMs = 0, MaxPagesPerQuery = 1, Queries = ["taladro"], ApiBaseUrl = "https://otra-api.example" } },
+        });
+
+        await CollectAsync(Easy(handler, options).ScrapeAsync());
+
+        Assert.Equal("otra-api.example", handler.Requests[0].Host);
+    }
+
+    private static ImperialScraper Imperial(IPageFetcher browser) =>
+        new(Fetchers(new FakePageFetcher(_ => throw new InvalidOperationException("Imperial no debe usar HTTP directo (responde 403)")), browser),
+            OptionsFor(ImperialScraper.Key, "taladro"), NullLogger<ImperialScraper>.Instance);
+
+    [Fact]
+    public async Task Imperial_usa_navegador_y_lee_tarjetas_con_selectores()
+    {
+        var requested = new List<string>();
+        var browser = new FakePageFetcher(url => { requested.Add(url); return url.Contains("p=1") ? Fixture.Read("listing.html") : "<html><body></body></html>"; });
+
+        var products = await CollectAsync(Imperial(browser).ScrapeAsync());
+
+        Assert.Equal("https://www.imperial.cl/catalogsearch/result/?q=taladro&p=1", requested[0]);
         Assert.Equal(2, products.Count);
         Assert.Equal("IMP-1", products[0].ExternalId);
         Assert.Equal("https://www.imperial.cl/taladro-bosch-gsb-13-re.html", products[0].Url);
@@ -80,6 +136,61 @@ public class ScraperParsingTests
         Assert.Equal("https://cdn.example/ga4530.jpg", products[1].ImageUrl);
         Assert.False(products[1].IsAvailable);
     }
+
+    [Fact]
+    public async Task Imperial_prefiere_el_precio_final_aunque_el_normal_aparezca_antes()
+    {
+        var browser = new FakePageFetcher(url => url.Contains("p=1") ? Fixture.Read("imperial-listing.html") : null);
+
+        var products = await CollectAsync(Imperial(browser).ScrapeAsync());
+
+        Assert.Equal(2, products.Count);
+        var taladro = products[0];
+        Assert.Equal("IMP-500", taladro.ExternalId);
+        Assert.Equal("Taladro Percutor 650W GSB 13 RE", taladro.Title);
+        Assert.Equal(49990m, taladro.Price);
+        Assert.Equal(64990m, taladro.ListPrice);
+        Assert.Equal("https://www.imperial.cl/taladro-percutor-bosch-gsb-13-re/p/500", taladro.Url);
+        Assert.Equal(54990m, products[1].Price);
+        Assert.False(products[1].IsAvailable);
+    }
+
+    [Fact]
+    public async Task Imperial_lee_el_JSON_de_Next_si_el_sitio_usa_la_plataforma_del_grupo()
+    {
+        var browser = new FakePageFetcher(url => url.Contains("p=1") ? Fixture.Read("sodimac-search.html") : null);
+
+        var products = await CollectAsync(Imperial(browser).ScrapeAsync());
+
+        Assert.Equal(3, products.Count);
+        Assert.Equal(149990m, products[0].Price);
+        Assert.Equal("https://www.imperial.cl/sodimac-cl/product/220002/set-brocas/220002", products[1].Url);
+    }
+
+    [Fact]
+    public async Task Imperial_recurre_a_JSON_LD_si_no_encuentra_la_grilla()
+    {
+        var browser = new FakePageFetcher(url => url.Contains("p=1") ? Fixture.Read("jsonld.html") : null);
+
+        var products = await CollectAsync(Imperial(browser).ScrapeAsync());
+
+        Assert.Equal(2, products.Count);
+        Assert.Equal("https://www.imperial.cl/p/sierra-cs1004", products[0].Url);
+    }
+
+    [Fact]
+    public async Task Imperial_falla_la_ejecucion_si_no_aparece_ningun_producto()
+    {
+        var browser = new FakePageFetcher(_ => "<html><body>Sin resultados</body></html>");
+
+        await Assert.ThrowsAsync<ScrapeFailedException>(() => CollectAsync(Imperial(browser).ScrapeAsync()));
+    }
+
+    [Fact]
+    public void UserAgent_de_navegador_no_delata_modo_headless() =>
+        Assert.Equal(
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+            PlaywrightPageFetcher.DesktopChromeUserAgent("153.0.8010.12"));
 
     [Fact]
     public async Task JsonLd_lee_ItemList_de_productos()
@@ -198,7 +309,8 @@ public class ScraperParsingTests
         });
         var scraper = new SodimacScraper(Fetchers(new FakePageFetcher(url => { requested.Add(url); return null; })), options, NullLogger<SodimacScraper>.Instance);
 
-        await CollectAsync(scraper.ScrapeAsync());
+        // La página "no existe" en el fake, así que además la ejecución queda como fallida.
+        await Assert.ThrowsAsync<ScrapeFailedException>(() => CollectAsync(scraper.ScrapeAsync()));
 
         Assert.Equal("https://www.sodimac.cl/nueva/busqueda?q=sierra%20circular&p=1", Assert.Single(requested));
     }

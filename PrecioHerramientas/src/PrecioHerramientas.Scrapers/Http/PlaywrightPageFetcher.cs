@@ -23,9 +23,14 @@ public sealed class PlaywrightPageFetcher(IOptions<ScraperOptions> options, ILog
         var browser = await GetBrowserAsync();
         await using var context = await browser.NewContextAsync(new BrowserNewContextOptions
         {
-            UserAgent = options.Value.UserAgent,
+            UserAgent = options.Value.BrowserUserAgent is { Length: > 0 } ua ? ua : DesktopChromeUserAgent(browser.Version),
             Locale = "es-CL",
             TimezoneId = "America/Santiago",
+            ViewportSize = new ViewportSize { Width = 1366, Height = 900 },
+            ExtraHTTPHeaders = new Dictionary<string, string>
+            {
+                ["Accept-Language"] = "es-CL,es;q=0.9,en;q=0.6",
+            },
         });
         var page = await context.NewPageAsync();
 
@@ -51,6 +56,16 @@ public sealed class PlaywrightPageFetcher(IOptions<ScraperOptions> options, ILog
 
         ct.ThrowIfCancellationRequested();
         return await page.ContentAsync();
+    }
+
+    /// <summary>
+    /// El User-Agent por defecto de Chromium headless dice "HeadlessChrome", y varias
+    /// tiendas lo rechazan. Se usa el de Chrome de escritorio con la misma versión.
+    /// </summary>
+    public static string DesktopChromeUserAgent(string browserVersion)
+    {
+        var major = browserVersion.Split('.')[0];
+        return $"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{major}.0.0.0 Safari/537.36";
     }
 
     private async Task<IBrowser> GetBrowserAsync()

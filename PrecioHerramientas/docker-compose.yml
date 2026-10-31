@@ -39,8 +39,6 @@ services:
       # Tiendas ficticias con datos de ejemplo, para probar la web sin depender de las tiendas reales.
       Scrapers__Stores__demo-norte__Enabled: ${SCRAPE_DEMO:-false}
       Scrapers__Stores__demo-sur__Enabled: ${SCRAPE_DEMO:-false}
-    volumes:
-      - dpkeys:/app/keys
     # Solo accesible desde el propio VPS; hacia internet se publica a través de Caddy/nginx.
     ports:
       - "127.0.0.1:${WEB_PORT:-8080}:8080"
@@ -65,6 +63,5 @@ services:
 
 volumes:
   pgdata:
-  dpkeys:
   caddy_data:
   caddy_config:
