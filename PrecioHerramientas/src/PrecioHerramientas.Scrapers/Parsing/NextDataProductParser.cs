@@ -27,10 +27,14 @@ public static partial class NextDataProductParser
         foreach (var r in results.Value.EnumerateArray())
         {
             if (r.ValueKind != JsonValueKind.Object) continue;
-            var id = Str(r, "skuId") ?? Str(r, "productId");
             var title = Str(r, "displayName");
-            var url = Str(r, "url");
-            if (id is null || title is null || url is null) continue;
+            var rawUrl = Str(r, "url");
+            if (title is null || rawUrl is null) continue;
+            var url = new Uri(baseUri, rawUrl).GetLeftPart(UriPartial.Path);
+            // El id de la publicación sale de la URL, igual que en la grilla HTML de respaldo:
+            // así una misma publicación no se guarda dos veces según por dónde se leyó.
+            var id = ListingId(url) ?? Str(r, "skuId") ?? Str(r, "productId");
+            if (id is null) continue;
 
             var (price, listPrice) = ReadPrices(r);
             if (price is null) continue;
@@ -39,17 +43,46 @@ public static partial class NextDataProductParser
             {
                 ExternalId = id,
                 Title = title,
-                Url = new Uri(baseUri, url).AbsoluteUri,
+                Url = url,
                 Price = price.Value,
                 ListPrice = listPrice,
                 Brand = Str(r, "brand"),
                 Model = ReadModel(r),
                 ImageUrl = FirstString(r, "mediaUrls"),
                 IsAvailable = true,
+                Seller = ReadSeller(r),
             });
         }
         return products;
     }
+
+    /// <summary>
+    /// Id de una publicación de Falabella/Sodimac a partir de su URL:
+    /// <c>/product/{productId}/{nombre}/{skuId}</c> → skuId; sin SKU, el productId.
+    /// </summary>
+    public static string? ListingId(string url)
+    {
+        var path = Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.AbsolutePath : url.Split('?', '#')[0];
+        var match = ProductPath().Match(path);
+        if (!match.Success) return null;
+        return match.Groups["sku"].Success && match.Groups["sku"].Value.Length > 0 ? match.Groups["sku"].Value : match.Groups["pid"].Value;
+    }
+
+    // "sellerName": "IMPERIAL"; en algunas versiones "seller": "..." o { "name": "..." }.
+    private static string? ReadSeller(JsonElement r)
+    {
+        if (Str(r, "sellerName") is { } name) return name;
+        if (!r.TryGetProperty("seller", out var seller)) return null;
+        return seller.ValueKind switch
+        {
+            JsonValueKind.String => Str(r, "seller"),
+            JsonValueKind.Object => Str(seller, "name") ?? Str(seller, "sellerName"),
+            _ => null,
+        };
+    }
+
+    [GeneratedRegex(@"/product/(?<pid>[^/?#]+)(?:/[^/?#]+(?:/(?<sku>[^/?#]+))?)?/?$")]
+    private static partial Regex ProductPath();
 
     private static JsonElement? FindResults(JsonElement element, int depth)
     {

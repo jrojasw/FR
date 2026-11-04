@@ -22,6 +22,12 @@ public sealed record ScrapedProduct
     public string? BranchCode { get; init; }
 
     public string? BranchName { get; init; }
+
+    /// <summary>
+    /// Vendedor de la publicación en tiendas con marketplace (p. ej. "Imperial" vendiendo en
+    /// sodimac.cl). Nulo o el nombre de la propia tienda cuando vende ella misma.
+    /// </summary>
+    public string? Seller { get; init; }
 }
 
 /// <summary>Datos estáticos de la tienda que maneja un scraper.</summary>

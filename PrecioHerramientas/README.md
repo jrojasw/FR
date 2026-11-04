@@ -126,7 +126,7 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 | Clave | Tienda | Plataforma / técnica |
 | --- | --- | --- |
 | `easy` | Easy | JSON de Next.js por HTTP: la página `/search/{término}` trae en `__NEXT_DATA__` los productos (`pageProps.serverProductsResponse.productList`), el total (`recordsFiltered`) y el `buildId`; las páginas siguientes salen de `/_next/data/{buildId}/search/{término}.json?search={término}&page=N`. El `buildId` se lee en cada ejecución (y se relee si Easy publica una versión nueva). Si Easy bloquea HTTP se usa Chromium; si la página no trae ese JSON, se leen las respuestas que pide la página |
-| `sodimac` | Sodimac | Búsqueda `/sodimac-cl/buscar?Ntt=…`; lee el JSON `__NEXT_DATA__` (`props.pageProps.results`). Pide primero por HTTP y, si la tienda lo bloquea o no entrega ese JSON, cambia a Chromium (Playwright). Ignora el precio con tarjeta CMR; el precio tachado queda como precio normal |
+| `sodimac` | Sodimac | Búsqueda `/sodimac-cl/buscar?Ntt=…`; lee el JSON `__NEXT_DATA__` (`props.pageProps.results`). Pide primero por HTTP y, si la tienda lo bloquea o no entrega ese JSON, cambia a Chromium (Playwright). Ignora el precio con tarjeta CMR; el precio tachado queda como precio normal. Guarda el vendedor de cada publicación (marketplace) y usa como id el SKU de la URL (`/product/{productId}/{nombre}/{skuId}`), igual al leer el JSON o la grilla, para no duplicar publicaciones |
 | `imperial` | Imperial | API de búsqueda guiada de Oracle Commerce: `/ccstore/v1/assembler/pages/Default/services/guidedsearch?Ntt={término}&searchType=simple&Nrpp=36` resuelve el término (p. ej. "taladro" → `N-1033696118`) y `/guidedsearch/_/N-…?Nrpp=36&No={offset}` entrega los productos (`sku.activePrice`, `sku.availabilityStatus`, `product.route`…) y `totalNumRecs`. HTTP con encabezados de navegador; si responde 403, la API se pide dentro de una sesión de Chromium. Una búsqueda `N-…` se usa directo como categoría |
 | `construmart` | Construmart | Magento 2, **precio y stock por sucursal**. En una sola sesión de Chromium: lee las sucursales de las regiones configuradas desde el modal "Elige tu tienda" (o de `Branches:List`), fija cada sucursal y corre todas las búsquedas en ella (`/catalogsearch/result/?q=`, que redirige a una categoría; paginación `?p=N`). Precio desde `data-price-amount`, SKU desde `data-product-sku`. Corre dos veces al día con 3 s entre peticiones |
 
@@ -184,6 +184,15 @@ Al elegir la primera sucursal, el log indica qué cookies cambió el sitio
 (`construmart: al elegir la sucursal ... cambiaron las cookies: ...`). Si una guarda el
 id de la sucursal, configurar `CookieName` y `List` evita abrir el modal en cada
 sucursal.
+
+### Vendedores y publicaciones repetidas
+
+En la ficha del producto se muestra una fila por tienda + vendedor + sucursal (la de
+menor precio con stock); las demás publicaciones del mismo grupo (otros SKU) quedan en
+"Ver N publicaciones más". Si el vendedor es un tercero aparece "Vendido por X". Si es
+otra tienda que también se sigue (p. ej. Imperial vendiendo en sodimac.cl), la fila se
+oculta cuando esa tienda ya tiene una oferta del mismo producto al mismo precio, y si
+no se muestra como "Imperial (vía Sodimac)".
 
 ## Sitio web
 

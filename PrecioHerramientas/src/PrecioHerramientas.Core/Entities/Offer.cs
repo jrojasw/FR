@@ -23,6 +23,9 @@ public class Offer
 
     public string? BranchName { get; set; }
 
+    /// <summary>Vendedor de la publicación (marketplace). Nulo si vende la propia tienda.</summary>
+    public string? Seller { get; set; }
+
     public required string Url { get; set; }
     public required string Title { get; set; }
     public string? BrandRaw { get; set; }

@@ -191,6 +191,11 @@ namespace PrecioHerramientas.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("product_id");
 
+                    b.Property<string>("Seller")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("seller");
+
                     b.Property<int>("StoreId")
                         .HasColumnType("integer")
                         .HasColumnName("store_id");

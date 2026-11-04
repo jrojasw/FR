@@ -146,6 +146,7 @@ public sealed class PriceIngestionService(
             Ean = Fit(item.Ean?.Trim(), FieldLimits.OfferEan, "ean"),
             BranchCode = Fit(item.BranchCode?.Trim(), FieldLimits.BranchCode, "sucursal"),
             BranchName = Fit(item.BranchName?.Trim(), FieldLimits.BranchName, "nombre de sucursal"),
+            Seller = Fit(string.IsNullOrWhiteSpace(item.Seller) ? null : TextNormalizer.CleanWhitespace(item.Seller), FieldLimits.Seller, "vendedor"),
         };
         if (cut.Count > 0)
             logger.LogWarning("Producto {ExternalId} con campos demasiado largos, se recortaron: {Fields}", clean.ExternalId, string.Join(", ", cut));
@@ -169,6 +170,7 @@ public sealed class PriceIngestionService(
         offer.Ean = item.Ean ?? offer.Ean;
         offer.ImageUrl = item.ImageUrl ?? offer.ImageUrl;
         offer.BranchName = item.BranchName ?? offer.BranchName;
+        offer.Seller = item.Seller;
         offer.LastSeenAt = now;
 
         var listPrice = NormalizeListPrice(item);
@@ -198,6 +200,7 @@ public sealed class PriceIngestionService(
             ExternalId = item.ExternalId.Trim(),
             BranchCode = item.BranchCode ?? "",
             BranchName = item.BranchName,
+            Seller = item.Seller,
             Url = item.Url,
             Title = TextNormalizer.CleanWhitespace(item.Title),
             BrandRaw = item.Brand,

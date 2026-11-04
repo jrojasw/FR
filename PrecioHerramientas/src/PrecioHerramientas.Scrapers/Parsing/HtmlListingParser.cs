@@ -8,7 +8,7 @@ namespace PrecioHerramientas.Scrapers.Parsing;
 public sealed record ListingSelectors
 {
     public const string CardKey = "Card", TitleKey = "Title", LinkKey = "Link", PriceKey = "Price", ListPriceKey = "ListPrice",
-        ImageKey = "Image", BrandKey = "Brand", SkuKey = "Sku", SkuAttributeKey = "SkuAttribute", OutOfStockKey = "OutOfStock",
+        ImageKey = "Image", BrandKey = "Brand", SellerKey = "Seller", SkuKey = "Sku", SkuAttributeKey = "SkuAttribute", OutOfStockKey = "OutOfStock",
         WaitForKey = "WaitFor";
 
     public required string Card { get; init; }
@@ -18,6 +18,9 @@ public sealed record ListingSelectors
     public string? ListPrice { get; init; }
     public string? Image { get; init; }
     public string? Brand { get; init; }
+
+    /// <summary>Vendedor en marketplaces ("Por Imperial", "Vendido por X"; se quita el prefijo).</summary>
+    public string? Seller { get; init; }
 
     /// <summary>Elemento (dentro de la tarjeta, o la tarjeta misma si es vacío) que trae el SKU.</summary>
     public string? Sku { get; init; }
@@ -44,6 +47,7 @@ public sealed record ListingSelectors
             ListPrice = Get(ListPriceKey, ListPrice),
             Image = Get(ImageKey, Image),
             Brand = Get(BrandKey, Brand),
+            Seller = Get(SellerKey, Seller),
             Sku = Get(SkuKey, Sku),
             SkuAttribute = Get(SkuAttributeKey, SkuAttribute),
             OutOfStock = Get(OutOfStockKey, OutOfStock),
@@ -79,11 +83,19 @@ public static class HtmlListingParser
                 ListPrice = selectors.ListPrice is null ? null : Price(card, selectors.ListPrice),
                 IsAvailable = selectors.OutOfStock is null || card.QuerySelector(selectors.OutOfStock) is null,
                 Brand = selectors.Brand is null ? null : Text(card, selectors.Brand),
+                Seller = selectors.Seller is null ? null : SellerName(Text(card, selectors.Seller)),
                 Category = category,
                 ImageUrl = image is null || image.StartsWith("data:", StringComparison.Ordinal) ? null : new Uri(baseUri, image).ToString(),
             });
         }
         return results;
+    }
+
+    private static string? SellerName(string? text)
+    {
+        if (text is null) return null;
+        var name = System.Text.RegularExpressions.Regex.Replace(text, @"^\s*(vendido\s+)?por\s*:?\s*", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+        return name.Length > 0 ? name : null;
     }
 
     private static string? ReadSku(IElement card, ListingSelectors selectors)

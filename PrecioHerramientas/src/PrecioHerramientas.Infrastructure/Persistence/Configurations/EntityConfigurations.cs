@@ -72,6 +72,7 @@ internal sealed class OfferConfiguration : IEntityTypeConfiguration<Offer>
 
         b.Property(x => x.BranchCode).HasMaxLength(FieldLimits.BranchCode).HasDefaultValue("");
         b.Property(x => x.BranchName).HasMaxLength(FieldLimits.BranchName);
+        b.Property(x => x.Seller).HasMaxLength(FieldLimits.Seller);
 
         // Una oferta por publicación y sucursal ("" en tiendas sin sucursales).
         b.HasIndex(x => new { x.StoreId, x.ExternalId, x.BranchCode }).IsUnique();

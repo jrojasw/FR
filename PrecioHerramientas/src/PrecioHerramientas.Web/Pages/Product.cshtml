@@ -1,12 +1,13 @@
 @page "/producto/{slug}"
 @model ProductModel
+@using PrecioHerramientas.Web.Pages.Shared
 @{
     var p = Model.Product;
     var best = Model.BestOffer;
     ViewData["Title"] = p.Name;
     ViewData["Description"] = best is null
         ? $"{p.Name}: compara precios en tiendas de Chile."
-        : $"{p.Name} desde {Format.Price(best.Price)} en {best.StoreName}. Compara precios e historial.";
+        : $"{p.Name} desde {Format.Price(best.Offer.Price)} en {best.StoreLabel}. Compara precios e historial.";
 }
 
 <nav aria-label="breadcrumb">
@@ -50,10 +51,10 @@
                 <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
                     <div>
                         <div class="small text-muted">Mejor precio hoy</div>
-                        <div class="display-6 fw-bold text-success">@Format.Price(best.Price)</div>
-                        <div class="small">en <strong>@best.StoreName</strong>@(best.BranchName is null ? "" : $" · sucursal {best.BranchName}")</div>
+                        <div class="display-6 fw-bold text-success">@Format.Price(best.Offer.Price)</div>
+                        <div class="small">en <strong>@best.StoreLabel</strong>@(best.Offer.BranchName is null ? "" : $" · sucursal {best.Offer.BranchName}")@(best.SellerNote is null ? "" : $" · {best.SellerNote.ToLowerInvariant()}")</div>
                     </div>
-                    <a href="@best.Url" class="btn btn-success btn-lg" target="_blank" rel="nofollow noopener noreferrer">Ir a la tienda</a>
+                    <a href="@best.Offer.Url" class="btn btn-success btn-lg" target="_blank" rel="nofollow noopener noreferrer">Ir a la tienda</a>
                 </div>
             </div>
         }
@@ -66,7 +67,7 @@
         {
             <p class="small mb-0">
                 Precio mínimo registrado: <strong>@Format.Price(min)</strong> el @Format.Date(p.HistoricalMinDate!.Value).
-                @if (best is not null && best.Price <= min)
+                @if (best is not null && best.Offer.Price <= min)
                 {
                     <span class="badge text-bg-success ms-1">¡Es el mínimo histórico!</span>
                 }
@@ -89,40 +90,22 @@
                     <th></th>
                 </tr>
             </thead>
-            <tbody>
-                @foreach (var o in p.Offers)
+            @for (var i = 0; i < Model.Groups.Count; i++)
+            {
+                var group = Model.Groups[i];
+                <tbody>
+                    @await Html.PartialAsync("_OfferRow", new OfferRowModel(group.Primary, group.Primary.Offer == best?.Offer, group.More.Count, $"mas-{i}"))
+                </tbody>
+                @if (group.More.Count > 0)
                 {
-                    <tr class="@(o.IsAvailable ? "" : "text-muted")">
-                        <td>
-                            <div class="fw-semibold">@o.StoreName</div>
-                            @if (o.BranchName is not null)
-                            {
-                                <div class="small text-muted">Sucursal @o.BranchName</div>
-                            }
-                        </td>
-                        <td class="d-none d-md-table-cell small">@o.Title</td>
-                        <td class="text-end text-nowrap">
-                            @if (o.IsAvailable)
-                            {
-                                <span class="fw-bold @(o == best ? "text-success" : "")">@Format.Price(o.Price)</span>
-                                @if (o.DiscountPercent is { } pct)
-                                {
-                                    <span class="badge text-bg-danger ms-1">-@pct%</span>
-                                }
-                            }
-                            else
-                            {
-                                <span class="badge text-bg-secondary">Sin stock</span>
-                            }
-                        </td>
-                        <td class="text-end text-decoration-line-through small d-none d-sm-table-cell">@(o.ListPrice is null ? "" : Format.Price(o.ListPrice))</td>
-                        <td class="small d-none d-lg-table-cell" title="Último cambio de precio: @Format.DateTime(o.LastPriceChangeAt)">@Format.DateTime(o.LastSeenAt)</td>
-                        <td class="text-end">
-                            <a href="@o.Url" class="btn btn-sm btn-outline-primary" target="_blank" rel="nofollow noopener noreferrer">Ver</a>
-                        </td>
-                    </tr>
+                    <tbody class="collapse" id="mas-@i">
+                        @foreach (var row in group.More)
+                        {
+                            @await Html.PartialAsync("_OfferRow", new OfferRowModel(row, false, 0, null))
+                        }
+                    </tbody>
                 }
-            </tbody>
+            }
         </table>
     </div>
 </section>

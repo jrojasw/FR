@@ -1,0 +1,51 @@
+@using PrecioHerramientas.Web.Pages.Shared
+@model OfferRowModel
+@{
+    var o = Model.Row.Offer;
+}
+<tr class="@(o.IsAvailable ? "" : "text-muted")">
+    <td>
+        <div class="fw-semibold">@Model.Row.StoreLabel</div>
+        @if (Model.Row.SellerNote is not null)
+        {
+            <div class="small text-muted">@Model.Row.SellerNote</div>
+        }
+        @if (o.BranchName is not null)
+        {
+            <div class="small text-muted">Sucursal @o.BranchName</div>
+        }
+        @if (Model.MoreCount > 0)
+        {
+            <button type="button" class="btn btn-link btn-sm p-0 small" data-bs-toggle="collapse" data-bs-target="#@Model.MoreTarget"
+                    aria-expanded="false" aria-controls="@Model.MoreTarget">
+                Ver @(Model.MoreCount == 1 ? "1 publicación más" : $"{Model.MoreCount} publicaciones más")
+            </button>
+        }
+    </td>
+    <td class="d-none d-md-table-cell small">
+        @o.Title
+        @if (o.ExternalId is not null)
+        {
+            <div class="text-muted">SKU @o.ExternalId</div>
+        }
+    </td>
+    <td class="text-end text-nowrap">
+        @if (o.IsAvailable)
+        {
+            <span class="fw-bold @(Model.IsBest ? "text-success" : "")">@Format.Price(o.Price)</span>
+            @if (o.DiscountPercent is { } pct)
+            {
+                <span class="badge text-bg-danger ms-1">-@pct%</span>
+            }
+        }
+        else
+        {
+            <span class="badge text-bg-secondary">Sin stock</span>
+        }
+    </td>
+    <td class="text-end text-decoration-line-through small d-none d-sm-table-cell">@(o.ListPrice is null ? "" : Format.Price(o.ListPrice))</td>
+    <td class="small d-none d-lg-table-cell" title="Último cambio de precio: @Format.DateTime(o.LastPriceChangeAt)">@Format.DateTime(o.LastSeenAt)</td>
+    <td class="text-end">
+        <a href="@o.Url" class="btn btn-sm btn-outline-primary" target="_blank" rel="nofollow noopener noreferrer">Ver</a>
+    </td>
+</tr>

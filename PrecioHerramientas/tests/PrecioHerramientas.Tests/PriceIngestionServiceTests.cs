@@ -208,4 +208,17 @@ public class PriceIngestionServiceTests : IDisposable
         Assert.Equal(2, product.OfferCount);     // Construmart y Easy, aunque haya 3 ofertas
         Assert.Equal(175000m, product.BestPrice);
     }
+
+    [Fact]
+    public async Task Guarda_y_actualiza_el_vendedor_de_la_publicacion()
+    {
+        var sodimac = await _test.AddStoreAsync("sodimac");
+
+        await _test.IngestAsync(sodimac, Item("119001-7", "Lijadora TF2131256", 80490) with { Seller = "  IMPERIAL " });
+        Assert.Equal("IMPERIAL", (await _test.Db.Offers.AsNoTracking().SingleAsync()).Seller);
+
+        _test.Clock.UtcNow = _test.Clock.UtcNow.AddHours(6);
+        await _test.IngestAsync(sodimac, Item("119001-7", "Lijadora TF2131256", 80490));   // ahora vende Sodimac
+        Assert.Null((await _test.Db.Offers.AsNoTracking().SingleAsync()).Seller);
+    }
 }

@@ -106,7 +106,7 @@ internal sealed class CatalogQueries(AppDbContext db) : ICatalogQueries
             .ThenBy(o => o.Price)
             .Select(o => new OfferView(o.Store.Key, o.Store.Name, o.Store.LogoUrl, o.Url, o.Title,
                 o.Price, o.ListPrice, o.IsAvailable, o.LastSeenAt, o.LastPriceChangeAt,
-                o.BranchCode == "" ? null : o.BranchName ?? o.BranchCode))
+                o.BranchCode == "" ? null : o.BranchName ?? o.BranchCode, o.Seller, o.ExternalId))
             .ToListAsync(ct);
 
         var historicalMin = await db.PricePoints.AsNoTracking()

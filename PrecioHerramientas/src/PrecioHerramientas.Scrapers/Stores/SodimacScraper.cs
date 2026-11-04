@@ -39,6 +39,7 @@ public sealed class SodimacScraper(IServiceProvider services, IOptions<ScraperOp
         Card = "[data-pod='catalyst-pod'], div[id^='testId-pod-'], div.pod",
         Title = "[id^='testId-pod-displayName'], b.pod-subTitle, .pod-subTitle",
         Brand = "[id^='testId-pod-brandName'], b.pod-title, .pod-title",
+        Seller = "[id^='testId-pod-seller'], .pod-sellerText, [class*='seller']",
         Link = "a",
         Price = "[data-internet-price], [data-event-price], li.prices-0 span, .prices-0 span",
         ListPrice = "[data-normal-price]",
@@ -68,7 +69,10 @@ public sealed class SodimacScraper(IServiceProvider services, IOptions<ScraperOp
                 Logger.LogWarning(ex, "Sodimac: __NEXT_DATA__ con formato inesperado");
             }
         }
-        return base.ParsePage(document, query);
+        // Respaldo HTML: el mismo id que el JSON (sale de la URL), para no duplicar publicaciones.
+        return base.ParsePage(document, query)
+            .Select(p => NextDataProductParser.ListingId(p.Url) is { } id ? p with { ExternalId = id } : p)
+            .ToList();
     }
 
     /// <summary>Lee los productos de <c>props.pageProps.results</c> (ver <see cref="NextDataProductParser"/>).</summary>

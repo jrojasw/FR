@@ -163,6 +163,9 @@ public class ScraperParsingTests
 
         var roto = products[0];
         Assert.Equal("110001X", roto.ExternalId);
+        Assert.Equal("SODIMAC", roto.Seller);
+        // Sin parámetros de seguimiento: la misma publicación siempre tiene la misma URL.
+        Assert.Equal("https://www.sodimac.cl/sodimac-cl/product/110001/rotomartillo-sds-plus-800w/110001X", roto.Url);
         Assert.Equal(149990m, roto.Price);      // precio internet, no el de tarjeta CMR
         Assert.Equal(169990m, roto.ListPrice);  // precio normal tachado
         Assert.Equal("MAKITA", roto.Brand);
@@ -170,6 +173,7 @@ public class ScraperParsingTests
         Assert.Equal("https://media.falabella.com/sodimacCL/110001/w=200", roto.ImageUrl);
 
         var brocas = products[1];
+        Assert.Equal("Imperial", brocas.Seller);   // "seller": { "name": ... }
         Assert.Equal(7990m, brocas.Price);      // rango de precios por variantes: el menor
         Assert.Equal(12990m, brocas.ListPrice);
         Assert.Equal("https://www.sodimac.cl/sodimac-cl/product/220002/set-brocas/220002", brocas.Url);
@@ -258,5 +262,29 @@ public class ScraperParsingTests
         Assert.Equal(".nueva", merged.Card);
         Assert.Null(merged.Brand);
         Assert.Equal(".t", merged.Title);
+    }
+
+    [Theory]
+    [InlineData("https://www.sodimac.cl/sodimac-cl/product/119001/lijadora-tf2131256/119001-7", "119001-7")]
+    [InlineData("https://www.sodimac.cl/sodimac-cl/product/119001/lijadora-tf2131256/119001-7?exp=1#x", "119001-7")]
+    [InlineData("/sodimac-cl/product/119001/lijadora-tf2131256", "119001")]
+    [InlineData("https://www.sodimac.cl/sodimac-cl/category/cat123/lijadoras", null)]
+    public void Sodimac_id_de_la_publicacion_sale_de_la_URL(string url, string? expected) =>
+        Assert.Equal(expected, PrecioHerramientas.Scrapers.Parsing.NextDataProductParser.ListingId(url));
+
+    [Fact]
+    public async Task Sodimac_grilla_HTML_usa_el_mismo_id_que_el_JSON_y_lee_el_vendedor()
+    {
+        // La tarjeta trae data-key = productId; antes eso creaba una segunda oferta para la
+        // misma publicación que el JSON guarda con su skuId.
+        // Sin __NEXT_DATA__ la página pasa por el navegador, que entrega la grilla.
+        string? Grid(string url) => url.Contains("page=1") ? Fixture.Read("sodimac-grid.html") : null;
+        var products = await CollectAsync(Sodimac(Fetchers(new FakePageFetcher(Grid), new FakePageFetcher(Grid))).ScrapeAsync());
+
+        var lijadora = Assert.Single(products);
+        Assert.Equal("119001-7", lijadora.ExternalId);
+        Assert.Equal("https://www.sodimac.cl/sodimac-cl/product/119001/lijadora-excentrica-320w-tf2131256/119001-7", lijadora.Url);
+        Assert.Equal("Imperial", lijadora.Seller);   // "Por Imperial"
+        Assert.Equal(80490m, lijadora.Price);
     }
 }

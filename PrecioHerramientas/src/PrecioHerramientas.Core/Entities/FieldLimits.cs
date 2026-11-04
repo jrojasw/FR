@@ -28,4 +28,5 @@ public static class FieldLimits
     public const int OfferEan = 200;
     public const int BranchCode = 50;
     public const int BranchName = 200;
+    public const int Seller = 200;
 }
