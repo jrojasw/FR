@@ -36,6 +36,14 @@ enum AttachmentKind {
   DOCUMENT
 }
 
+// Empresa desde cuya cuenta salen los fondos para pagar la rendición. La
+// elige el Aprobador al aprobar, porque de eso depende con qué cuenta se
+// paga.
+enum Empresa {
+  CPY_NOS
+  COPAYAPU_NOS
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String?
@@ -100,6 +108,8 @@ model ExpenseReport {
   submittedAt   DateTime?
   reviewedAt    DateTime?
   reviewComment String?
+  // Elegida por el Aprobador al aprobar: define con qué cuenta se paga.
+  empresa       Empresa?
 
   user   User   @relation("ReportOwner", fields: [userId], references: [id])
   userId String

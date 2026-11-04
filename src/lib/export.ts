@@ -1,7 +1,7 @@
 import "server-only";
 import ExcelJS from "exceljs";
 import type { RegistryReport } from "@/lib/registry";
-import { documentTypeLabels, reportStatusLabels } from "@/lib/format";
+import { documentTypeLabels, reportStatusLabels, empresaLabels } from "@/lib/format";
 
 type ExportRow = {
   usuario: string;
@@ -16,6 +16,7 @@ type ExportRow = {
   totalRendido: number;
   montoReembolso: number;
   estado: string;
+  empresa: string;
   adjuntos: number;
   fechaPago: string;
   certificadoPago: string;
@@ -34,6 +35,7 @@ const COLUMNS: { key: keyof ExportRow; header: string }[] = [
   { key: "totalRendido", header: "Total rendido" },
   { key: "montoReembolso", header: "Reembolso correspondiente" },
   { key: "estado", header: "Estado" },
+  { key: "empresa", header: "Empresa que paga" },
   { key: "adjuntos", header: "N° adjuntos" },
   { key: "fechaPago", header: "Fecha de pago" },
   { key: "certificadoPago", header: "Certificado de pago" },
@@ -51,6 +53,7 @@ export function buildExportRows(reports: RegistryReport[]): ExportRow[] {
       totalRendido: Number(report.totalRendido.toString()),
       montoReembolso: Number(report.montoReembolso.toString()),
       estado: reportStatusLabels[report.status] ?? report.status,
+      empresa: report.empresa ? (empresaLabels[report.empresa] ?? report.empresa) : "",
       adjuntos: report.attachments.length,
       fechaPago: report.paidAt ? report.paidAt.toISOString().slice(0, 10) : "",
       certificadoPago: report.paymentCertificateName ?? "",

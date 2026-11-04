@@ -32,6 +32,11 @@ export const documentTypeLabels: Record<string, string> = {
   RETIRO: "Retiro/boleta",
 };
 
+export const empresaLabels: Record<string, string> = {
+  CPY_NOS: "CPY Nos",
+  COPAYAPU_NOS: "Copayapu Nos",
+};
+
 export const reportStatusLabels: Record<string, string> = {
   DRAFT: "Borrador",
   SUBMITTED: "Enviada",

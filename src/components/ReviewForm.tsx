@@ -13,6 +13,27 @@ export function ReviewForm({ reportId }: { reportId: string }) {
     <form action={formAction} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-semibold text-slate-900">Decisión</h2>
       <div>
+        <label htmlFor="empresa" className="block text-sm font-medium text-slate-700">
+          Empresa que paga
+        </label>
+        <p className="mt-1 text-xs text-slate-500">
+          Solo se necesita para aprobar: define con qué cuenta sale el pago.
+        </p>
+        <select
+          id="empresa"
+          name="empresa"
+          required
+          defaultValue=""
+          className="mt-1 w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+        >
+          <option value="" disabled>
+            Selecciona una empresa
+          </option>
+          <option value="CPY_NOS">CPY Nos</option>
+          <option value="COPAYAPU_NOS">Copayapu Nos</option>
+        </select>
+      </div>
+      <div>
         <label htmlFor="reviewComment" className="block text-sm font-medium text-slate-700">
           Comentario (opcional)
         </label>
@@ -42,6 +63,7 @@ export function ReviewForm({ reportId }: { reportId: string }) {
           type="submit"
           name="decision"
           value="REJECTED"
+          formNoValidate
           disabled={pending}
           className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
         >

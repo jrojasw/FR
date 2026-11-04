@@ -70,7 +70,19 @@ export const finalizeReportSchema = z.object({
   beneficiarioRut: z.string().trim().optional().default(""),
 });
 
-export const reviewReportSchema = z.object({
-  decision: z.enum(["APPROVED", "REJECTED"]),
-  reviewComment: z.string().trim().max(2000).optional(),
-});
+export const reviewReportSchema = z
+  .object({
+    decision: z.enum(["APPROVED", "REJECTED"]),
+    reviewComment: z.string().trim().max(2000).optional(),
+    // Solo obligatoria al aprobar: define con qué cuenta se paga.
+    empresa: z.enum(["CPY_NOS", "COPAYAPU_NOS"]).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.decision === "APPROVED" && !data.empresa) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["empresa"],
+        message: "Selecciona la empresa (CPY Nos o Copayapu Nos) para saber con qué cuenta se paga.",
+      });
+    }
+  });

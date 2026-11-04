@@ -5,6 +5,7 @@ import {
   documentTypeLabels,
   reportStatusLabels,
   reportStatusStyles,
+  empresaLabels,
 } from "@/lib/format";
 
 type Decimalish = { toString(): string };
@@ -31,6 +32,7 @@ export type ReportViewData = {
   submittedAt: Date | null;
   reviewedAt: Date | null;
   reviewComment: string | null;
+  empresa: string | null;
   reviewer?: { name: string | null; email: string } | null;
   paidAt: Date | null;
   paymentCertificateName: string | null;
@@ -210,6 +212,14 @@ export function ReportView({ report, actions }: { report: ReportViewData; action
                 {report.reviewedAt ? formatDate(report.reviewedAt) : "—"}
               </dd>
             </div>
+            {report.empresa ? (
+              <div>
+                <dt className="text-slate-500">Empresa que paga</dt>
+                <dd className="font-medium text-slate-900">
+                  {empresaLabels[report.empresa] ?? report.empresa}
+                </dd>
+              </div>
+            ) : null}
             {report.reviewComment ? (
               <div>
                 <dt className="text-slate-500">Comentario</dt>

@@ -9,7 +9,7 @@ import { sendEmail } from "@/lib/email";
 import { readAttachmentFile } from "@/lib/storage";
 import { getPaymentNoticeEmails, getAdminEmail, getApproverEmail } from "@/lib/roles";
 import { reviewReportSchema, createReportSchema, saveItemsSchema, finalizeReportSchema } from "@/lib/validation";
-import { formatCurrency, formatDate, documentTypeLabels } from "@/lib/format";
+import { formatCurrency, formatDate, documentTypeLabels, empresaLabels } from "@/lib/format";
 import { buildReportPdf } from "@/lib/pdf-export";
 import { computeTotals } from "@/lib/reports";
 import { isValidRut, formatRut } from "@/lib/rut";
@@ -30,8 +30,11 @@ export async function reviewReportAction(
   const parsed = reviewReportSchema.safeParse({
     decision: formData.get("decision"),
     reviewComment: formData.get("reviewComment") || undefined,
+    empresa: formData.get("empresa") || undefined,
   });
-  if (!parsed.success) return { error: "Selecciona aprobar o rechazar." };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Selecciona aprobar o rechazar." };
+  }
 
   const report = await prisma.expenseReport.findFirst({
     where: { id: reportId, status: "SUBMITTED" },
@@ -46,6 +49,7 @@ export async function reviewReportAction(
       reviewedAt: new Date(),
       reviewComment: parsed.data.reviewComment,
       reviewerId: session.sub,
+      empresa: parsed.data.empresa,
     },
   });
 
@@ -79,11 +83,13 @@ export async function reviewReportAction(
     const porTercero = report.esParaOtraPersona
       ? ` a nombre de ${report.beneficiarioNombre} ${report.beneficiarioApellido} ${report.beneficiarioSegundoApellido}`
       : "";
+    const empresaLabel = parsed.data.empresa ? empresaLabels[parsed.data.empresa] : "—";
     await sendEmail({
       to: getAdminEmail(),
-      subject: `Falta subir comprobante de pago - Rendición N° ${report.correlativo}`,
+      subject: `Falta subir comprobante de pago - Rendición N° ${report.correlativo} - ${empresaLabel}`,
       html: `
         <p>La rendición N° ${report.correlativo} de ${report.nombre} ${report.apellido} ${report.segundoApellido} (${formatCurrency(report.totalRendido.toString())})${porTercero} fue aprobada.</p>
+        <p><strong>Empresa que paga: ${empresaLabel}</strong> — usa esa cuenta para la transferencia.</p>
         <p>Para cerrar el ciclo, sube el comprobante de la transferencia del banco como prueba de pago.</p>
         <p><a href="${baseUrl}/aprobaciones/${reportId}">Subir comprobante de pago</a></p>
       `,
