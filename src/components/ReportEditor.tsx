@@ -6,7 +6,7 @@ import {
   finalizeReportAction,
   checkDuplicateDocumentAction,
   acknowledgeDuplicateDocumentAction,
-  lookupBeneficiarioByRutAction,
+  lookupPersonByRutAction,
 } from "@/app/rendiciones/actions";
 import { AttachmentUploader, type DocumentSuggestion } from "@/components/AttachmentUploader";
 import { SignaturePad } from "@/components/SignaturePad";
@@ -107,6 +107,7 @@ export function ReportEditor({
   // Aviso de "se completó solo" tras leer una boleta/factura subida.
   const [ocrNotice, setOcrNotice] = useState<string | null>(null);
   const [rutLookupNotice, setRutLookupNotice] = useState<string | null>(null);
+  const [ownRutLookupNotice, setOwnRutLookupNotice] = useState<string | null>(null);
 
   const encabezadoRef = useRef<HTMLDivElement>(null);
   const detalleRef = useRef<HTMLDivElement>(null);
@@ -166,13 +167,39 @@ export function ReportEditor({
     );
   }
 
+  // Al salir de tu propio RUT, si ya apareció antes en el sistema se
+  // sugiere tu nombre y apellidos (solo rellena lo que esté vacío).
+  async function handleRutBlur() {
+    const value = rut.trim();
+    if (!value) return;
+    const person = await lookupPersonByRutAction(value);
+    if (!person) return;
+
+    let filledSomething = false;
+    if (person.nombre && !nombre.trim()) {
+      setNombre(person.nombre);
+      filledSomething = true;
+    }
+    if (person.apellido && !apellido.trim()) {
+      setApellido(person.apellido);
+      filledSomething = true;
+    }
+    if (person.segundoApellido && !segundoApellido.trim()) {
+      setSegundoApellido(person.segundoApellido);
+      filledSomething = true;
+    }
+    if (filledSomething) {
+      setOwnRutLookupNotice("Se completaron nombre y apellidos de una rendición anterior con este mismo RUT.");
+    }
+  }
+
   // Al salir del RUT del beneficiario, si ya apareció antes en el sistema
   // se sugiere su nombre y correo (solo rellena lo que esté vacío, nunca
   // pisa lo que ya se haya escrito a mano).
   async function handleBeneficiarioRutBlur() {
     const value = beneficiarioRut.trim();
     if (!value) return;
-    const person = await lookupBeneficiarioByRutAction(value);
+    const person = await lookupPersonByRutAction(value);
     if (!person) return;
 
     let filledSomething = false;
@@ -374,9 +401,11 @@ export function ReportEditor({
               id="rut"
               value={rut}
               onChange={(e) => setRut(formatRut(e.target.value))}
+              onBlur={handleRutBlur}
               placeholder="12.345.678-9"
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
             />
+            {ownRutLookupNotice ? <p className="mt-1 text-xs text-emerald-700">{ownRutLookupNotice}</p> : null}
           </div>
           <div>
             <label htmlFor="nombre" className="block text-sm font-medium text-slate-700">Nombre</label>

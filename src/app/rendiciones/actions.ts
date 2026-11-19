@@ -215,6 +215,13 @@ export async function finalizeReportAction(
     }),
   ]);
 
+  await upsertPersonDirectory({
+    rut: finalizeParsed.data.rut,
+    nombre,
+    apellido,
+    segundoApellido,
+    email: session.email,
+  });
   if (esParaOtraPersona) {
     await upsertPersonDirectory({
       rut: finalizeParsed.data.beneficiarioRut,
@@ -300,9 +307,10 @@ export type PersonLookupResult = {
   email: string | null;
 } | null;
 
-// Se llama al salir del campo RUT del beneficiario: si esa persona ya
-// apareció antes en otra rendición, sugiere su nombre y correo.
-export async function lookupBeneficiarioByRutAction(rut: string): Promise<PersonLookupResult> {
+// Se llama al salir de cualquier campo RUT (el propio o el del beneficiario):
+// si esa persona ya apareció antes en otra rendición, sugiere su nombre y
+// correo.
+export async function lookupPersonByRutAction(rut: string): Promise<PersonLookupResult> {
   await requireUser();
   const person = await lookupPersonDirectory(rut);
   if (!person) return null;

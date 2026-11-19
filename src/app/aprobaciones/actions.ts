@@ -208,6 +208,7 @@ export async function adminUpdateReportAction(
 
   const report = await prisma.expenseReport.findFirst({
     where: { id: reportId, status: { not: "DRAFT" } },
+    include: { user: true },
   });
   if (!report) return { error: "Rendición no encontrada." };
 
@@ -325,6 +326,13 @@ export async function adminUpdateReportAction(
     }),
   ]);
 
+  await upsertPersonDirectory({
+    rut: finalizeParsed.data.rut,
+    nombre,
+    apellido,
+    segundoApellido,
+    email: report.user.email,
+  });
   if (esParaOtraPersona) {
     await upsertPersonDirectory({
       rut: finalizeParsed.data.beneficiarioRut,
