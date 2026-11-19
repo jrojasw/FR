@@ -506,6 +506,23 @@ export function ReportEditor({
         )}
       </section>
 
+      <section ref={adjuntosRef} className="scroll-mt-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">Fotos y documentos</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Toma fotos de tus boletas/facturas, súbelas desde tu galería, o adjunta un documento digital.
+          Se leen solas y completan el detalle de abajo.
+        </p>
+        <div className="mt-4">
+          <AttachmentUploader
+            reportId={reportId}
+            initialAttachments={initialAttachments}
+            allowMobileHandoff={submitAction === finalizeReportAction}
+            onSuggestion={handleDocumentSuggestion}
+          />
+        </div>
+        {ocrNotice ? <p className="mt-2 text-sm text-emerald-700">{ocrNotice}</p> : null}
+      </section>
+
       <section ref={detalleRef} className="scroll-mt-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-900">Detalle de documentos</h2>
 
@@ -677,23 +694,6 @@ export function ReportEditor({
             <p className="mt-1 text-lg font-semibold text-[#004b93]">{formatCurrency(totals.montoReembolso)}</p>
           </div>
         </div>
-      </section>
-
-      <section ref={adjuntosRef} className="scroll-mt-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Fotos y documentos</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Toma fotos de tus boletas/facturas, súbelas desde tu galería, o adjunta un documento digital.
-          Se leen solas y completan una línea del detalle.
-        </p>
-        <div className="mt-4">
-          <AttachmentUploader
-            reportId={reportId}
-            initialAttachments={initialAttachments}
-            allowMobileHandoff={submitAction === finalizeReportAction}
-            onSuggestion={handleDocumentSuggestion}
-          />
-        </div>
-        {ocrNotice ? <p className="mt-2 text-sm text-emerald-700">{ocrNotice}</p> : null}
       </section>
 
       <section ref={firmaRef} className="scroll-mt-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
