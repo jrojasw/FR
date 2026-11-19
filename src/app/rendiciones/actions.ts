@@ -12,6 +12,7 @@ import { computeTotals } from "@/lib/reports";
 import { isValidRut, formatRut } from "@/lib/rut";
 import { createUploadTicket } from "@/lib/mobile-handoff";
 import { findDuplicateDocument, type DuplicateDocumentMatch } from "@/lib/duplicate-documents";
+import { upsertPersonDirectory, lookupPersonDirectory } from "@/lib/person-directory";
 import type { DocumentType } from "@/generated/prisma/enums";
 import {
   createReportSchema,
@@ -214,6 +215,16 @@ export async function finalizeReportAction(
     }),
   ]);
 
+  if (esParaOtraPersona) {
+    await upsertPersonDirectory({
+      rut: finalizeParsed.data.beneficiarioRut,
+      nombre: beneficiarioNombre,
+      apellido: beneficiarioApellido,
+      segundoApellido: beneficiarioSegundoApellido,
+      email: beneficiarioEmail || null,
+    });
+  }
+
   const h = await headers();
   const baseUrl = process.env.APP_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
 
@@ -280,4 +291,25 @@ export async function acknowledgeDuplicateDocumentAction(
     },
   });
   return { ok: true };
+}
+
+export type PersonLookupResult = {
+  nombre: string | null;
+  apellido: string | null;
+  segundoApellido: string | null;
+  email: string | null;
+} | null;
+
+// Se llama al salir del campo RUT del beneficiario: si esa persona ya
+// apareció antes en otra rendición, sugiere su nombre y correo.
+export async function lookupBeneficiarioByRutAction(rut: string): Promise<PersonLookupResult> {
+  await requireUser();
+  const person = await lookupPersonDirectory(rut);
+  if (!person) return null;
+  return {
+    nombre: person.nombre,
+    apellido: person.apellido,
+    segundoApellido: person.segundoApellido,
+    email: person.email,
+  };
 }

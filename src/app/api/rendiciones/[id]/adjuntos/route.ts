@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { saveAttachmentFile } from "@/lib/storage";
 import { MAX_ATTACHMENTS } from "@/lib/reports";
 import type { AttachmentKind } from "@/generated/prisma/enums";
+import { extractDocumentSuggestion } from "@/lib/document-ocr";
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const ALLOWED_DOC_TYPES = new Set([
@@ -30,7 +31,18 @@ export async function GET(
   const attachments = await prisma.attachment.findMany({
     where: { reportId },
     orderBy: { createdAt: "asc" },
-    select: { id: true, fileName: true, mimeType: true, kind: true },
+    select: {
+      id: true,
+      fileName: true,
+      mimeType: true,
+      kind: true,
+      ocrProcessed: true,
+      ocrTipoDocumento: true,
+      ocrNumeroDocumento: true,
+      ocrProveedor: true,
+      ocrMontoTotal: true,
+      ocrGlosa: true,
+    },
   });
 
   return NextResponse.json({ attachments });
@@ -94,7 +106,7 @@ export async function POST(
 
     const kind: AttachmentKind = isImage ? "PHOTO" : "DOCUMENT";
 
-    const attachment = await prisma.attachment.create({
+    let attachment = await prisma.attachment.create({
       data: {
         reportId,
         fileName: file.name,
@@ -104,6 +116,29 @@ export async function POST(
         kind,
       },
     });
+
+    // Lectura automática del documento (gratis, sin servicios externos):
+    // foto -> OCR, PDF -> texto embebido (o OCR de la 1ª página si es un
+    // PDF escaneado). Un fallo acá nunca debe impedir guardar el adjunto.
+    if (isImage || file.type === "application/pdf") {
+      try {
+        const suggestion = await extractDocumentSuggestion({ buffer, mimeType: file.type });
+        attachment = await prisma.attachment.update({
+          where: { id: attachment.id },
+          data: {
+            ocrProcessed: true,
+            ocrTipoDocumento: suggestion?.tipoDocumento ?? null,
+            ocrNumeroDocumento: suggestion?.numeroDocumento ?? null,
+            ocrProveedor: suggestion?.proveedor ?? null,
+            ocrMontoTotal: suggestion?.montoTotal ?? null,
+            ocrGlosa: suggestion?.glosa ?? null,
+          },
+        });
+      } catch (error) {
+        console.error("Error leyendo el documento automáticamente:", error);
+      }
+    }
+
     created.push(attachment);
   }
 

@@ -6,8 +6,9 @@ import {
   finalizeReportAction,
   checkDuplicateDocumentAction,
   acknowledgeDuplicateDocumentAction,
+  lookupBeneficiarioByRutAction,
 } from "@/app/rendiciones/actions";
-import { AttachmentUploader } from "@/components/AttachmentUploader";
+import { AttachmentUploader, type DocumentSuggestion } from "@/components/AttachmentUploader";
 import { SignaturePad } from "@/components/SignaturePad";
 import { DuplicateDocumentModal } from "@/components/DuplicateDocumentModal";
 import { computeTotals } from "@/lib/reports";
@@ -103,6 +104,10 @@ export function ReportEditor({
   const [acknowledgingDuplicate, setAcknowledgingDuplicate] = useState(false);
   const acknowledgedDuplicates = useRef<Set<string>>(new Set());
 
+  // Aviso de "se completó solo" tras leer una boleta/factura subida.
+  const [ocrNotice, setOcrNotice] = useState<string | null>(null);
+  const [rutLookupNotice, setRutLookupNotice] = useState<string | null>(null);
+
   const encabezadoRef = useRef<HTMLDivElement>(null);
   const detalleRef = useRef<HTMLDivElement>(null);
   const adjuntosRef = useRef<HTMLDivElement>(null);
@@ -128,6 +133,72 @@ export function ReportEditor({
 
   function removeItem(index: number) {
     setItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function isRowEmpty(row: ItemRow) {
+    return !row.glosa.trim() && !row.proveedor.trim() && !row.numeroDocumento.trim() && !row.montoTotal.trim();
+  }
+
+  const KNOWN_TIPOS = new Set(["BOLETA", "FACTURA", "RECIBO", "RETIRO"]);
+
+  // Al subir una foto o PDF de una boleta/factura, se lee sola y se llena
+  // una línea del detalle con lo que se pudo reconocer (queda editable por
+  // si la lectura se equivocó en algo).
+  function handleDocumentSuggestion(suggestion: DocumentSuggestion) {
+    const patch: Partial<ItemRow> = {};
+    if (suggestion.tipoDocumento && KNOWN_TIPOS.has(suggestion.tipoDocumento)) {
+      patch.tipoDocumento = suggestion.tipoDocumento as ItemRow["tipoDocumento"];
+    }
+    if (suggestion.numeroDocumento) patch.numeroDocumento = suggestion.numeroDocumento;
+    if (suggestion.proveedor) patch.proveedor = suggestion.proveedor;
+    if (suggestion.montoTotal) patch.montoTotal = suggestion.montoTotal;
+    if (suggestion.glosa) patch.glosa = suggestion.glosa;
+    if (Object.keys(patch).length === 0) return;
+
+    setItems((prev) => {
+      if (prev.length === 1 && isRowEmpty(prev[0])) {
+        return [{ ...prev[0], ...patch }];
+      }
+      return [...prev, { ...emptyRow(), ...patch }];
+    });
+    setOcrNotice(
+      `Se completó una línea del detalle leyendo ${suggestion.proveedor ?? "el documento"} automáticamente. Revísala antes de enviar.`
+    );
+  }
+
+  // Al salir del RUT del beneficiario, si ya apareció antes en el sistema
+  // se sugiere su nombre y correo (solo rellena lo que esté vacío, nunca
+  // pisa lo que ya se haya escrito a mano).
+  async function handleBeneficiarioRutBlur() {
+    const value = beneficiarioRut.trim();
+    if (!value) return;
+    const person = await lookupBeneficiarioByRutAction(value);
+    if (!person) return;
+
+    let filledSomething = false;
+    if (person.nombre && !beneficiarioNombre.trim()) {
+      setBeneficiarioNombre(person.nombre);
+      filledSomething = true;
+    }
+    if (person.apellido && !beneficiarioApellido.trim()) {
+      setBeneficiarioApellido(person.apellido);
+      filledSomething = true;
+    }
+    if (person.segundoApellido && !beneficiarioSegundoApellido.trim()) {
+      setBeneficiarioSegundoApellido(person.segundoApellido);
+      filledSomething = true;
+    }
+    if (person.email && !beneficiarioEmailUsuario.trim() && !beneficiarioEmailProveedor.trim()) {
+      const [usuario, proveedor] = person.email.split("@");
+      if (usuario && proveedor) {
+        setBeneficiarioEmailUsuario(usuario);
+        setBeneficiarioEmailProveedor(proveedor);
+        filledSomething = true;
+      }
+    }
+    if (filledSomething) {
+      setRutLookupNotice("Se completaron nombre y correo de una rendición anterior con este mismo RUT.");
+    }
   }
 
   async function checkDuplicateForRow(index: number) {
@@ -590,14 +661,17 @@ export function ReportEditor({
         <h2 className="text-lg font-semibold text-slate-900">Fotos y documentos</h2>
         <p className="mt-1 text-sm text-slate-500">
           Toma fotos de tus boletas/facturas, súbelas desde tu galería, o adjunta un documento digital.
+          Se leen solas y completan una línea del detalle.
         </p>
         <div className="mt-4">
           <AttachmentUploader
             reportId={reportId}
             initialAttachments={initialAttachments}
             allowMobileHandoff={submitAction === finalizeReportAction}
+            onSuggestion={handleDocumentSuggestion}
           />
         </div>
+        {ocrNotice ? <p className="mt-2 text-sm text-emerald-700">{ocrNotice}</p> : null}
       </section>
 
       <section ref={firmaRef} className="scroll-mt-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -627,12 +701,14 @@ export function ReportEditor({
                 id="beneficiarioRut"
                 value={beneficiarioRut}
                 onChange={(e) => setBeneficiarioRut(formatRut(e.target.value))}
+                onBlur={handleBeneficiarioRutBlur}
                 placeholder="12.345.678-9"
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
               />
             </div>
           )}
         </div>
+        {rutLookupNotice ? <p className="mt-2 text-sm text-emerald-700">{rutLookupNotice}</p> : null}
       </section>
 
       <button

@@ -11,12 +11,31 @@ type Attachment = {
   fileName: string;
   mimeType: string;
   kind: "PHOTO" | "DOCUMENT";
+  ocrProcessed?: boolean;
+  ocrTipoDocumento?: string | null;
+  ocrNumeroDocumento?: string | null;
+  ocrProveedor?: string | null;
+  ocrMontoTotal?: string | null;
+  ocrGlosa?: string | null;
 };
+
+export type DocumentSuggestion = {
+  tipoDocumento: string | null;
+  numeroDocumento: string | null;
+  proveedor: string | null;
+  montoTotal: string | null;
+  glosa: string | null;
+};
+
+function hasUsefulSuggestion(a: Attachment): boolean {
+  return Boolean(a.ocrTipoDocumento || a.ocrNumeroDocumento || a.ocrProveedor || a.ocrMontoTotal);
+}
 
 export function AttachmentUploader({
   reportId,
   initialAttachments,
   allowMobileHandoff = true,
+  onSuggestion,
 }: {
   reportId: string;
   initialAttachments: Attachment[];
@@ -24,6 +43,11 @@ export function AttachmentUploader({
   // mientras sigue en Borrador (ver createMobileUploadLinkAction); se oculta
   // cuando el Administrador está corrigiendo una rendición ajena ya enviada.
   allowMobileHandoff?: boolean;
+  // Se llama una sola vez por adjunto cuando la lectura automática del
+  // documento (OCR) encontró algo útil, para llenar sola una línea del
+  // detalle. Llega tanto para lo que se sube acá como para lo que llega
+  // desde el celular (vía el polling de abajo).
+  onSuggestion?: (suggestion: DocumentSuggestion) => void;
 }) {
   const [attachments, setAttachments] = useState<Attachment[]>(initialAttachments);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +68,24 @@ export function AttachmentUploader({
   useEffect(() => {
     attachmentsRef.current = attachments;
   }, [attachments]);
+
+  // Para no disparar la misma sugerencia dos veces (ej. si el polling
+  // vuelve a traer un adjunto que ya procesamos).
+  const notifiedSuggestions = useRef<Set<string>>(new Set());
+  function notifySuggestions(list: Attachment[]) {
+    if (!onSuggestion) return;
+    for (const a of list) {
+      if (!a.ocrProcessed || notifiedSuggestions.current.has(a.id) || !hasUsefulSuggestion(a)) continue;
+      notifiedSuggestions.current.add(a.id);
+      onSuggestion({
+        tipoDocumento: a.ocrTipoDocumento ?? null,
+        numeroDocumento: a.ocrNumeroDocumento ?? null,
+        proveedor: a.ocrProveedor ?? null,
+        montoTotal: a.ocrMontoTotal ?? null,
+        glosa: a.ocrGlosa ?? null,
+      });
+    }
+  }
 
   async function openMobileLink() {
     setMobileLinkError(null);
@@ -80,6 +122,7 @@ export function AttachmentUploader({
             added === 1 ? "Llegó 1 foto nueva desde tu celular." : `Llegaron ${added} fotos nuevas desde tu celular.`
           );
         }
+        notifySuggestions(fresh);
       } catch {
         // Se reintenta en el próximo intervalo; un fallo puntual no importa.
       }
@@ -112,6 +155,7 @@ export function AttachmentUploader({
         return;
       }
       setAttachments((prev) => [...prev, ...data.attachments]);
+      notifySuggestions(data.attachments ?? []);
     } catch {
       setError("No se pudo subir el archivo. Revisa tu conexión.");
     } finally {

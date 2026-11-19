@@ -35,7 +35,10 @@ export default async function SubirDesdeCelularPage({
       <div className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <AttachmentUploader
           reportId={report.id}
-          initialAttachments={report.attachments}
+          initialAttachments={report.attachments.map((a) => ({
+            ...a,
+            ocrMontoTotal: a.ocrMontoTotal?.toString() ?? null,
+          }))}
           allowMobileHandoff={false}
         />
       </div>

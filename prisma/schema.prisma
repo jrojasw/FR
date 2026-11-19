@@ -199,8 +199,32 @@ model Attachment {
   kind      AttachmentKind
   createdAt DateTime       @default(now())
 
+  // Lectura automática del documento (OCR para fotos, texto embebido para
+  // PDF) al subirlo: deja sugeridos los campos del detalle para no tener
+  // que escribirlos a mano. ocrProcessed queda true aunque no se haya
+  // encontrado nada, para no reintentar de nuevo solo.
+  ocrProcessed       Boolean       @default(false)
+  ocrTipoDocumento   DocumentType?
+  ocrNumeroDocumento String?
+  ocrProveedor       String?
+  ocrMontoTotal      Decimal?      @db.Decimal(12, 2)
+  ocrGlosa           String?
+
   report   ExpenseReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
   reportId String
 
   @@index([reportId])
+}
+
+// Base de datos de personas a nombre de quienes se ha rendido, por RUT: se
+// va llenando sola a medida que distintos trabajadores ingresan rendiciones
+// a nombre de otra persona, para no tener que volver a escribir el nombre y
+// el correo de alguien que ya apareció antes.
+model PersonDirectory {
+  rut             String   @id
+  nombre          String?
+  apellido        String?
+  segundoApellido String?
+  email           String?
+  updatedAt       DateTime @updatedAt
 }

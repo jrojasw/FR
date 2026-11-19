@@ -15,6 +15,7 @@ import { computeTotals } from "@/lib/reports";
 import { isValidRut, formatRut } from "@/lib/rut";
 import { sendReportUpdatedNotice } from "@/lib/report-notifications";
 import { findDuplicateDocument } from "@/lib/duplicate-documents";
+import { upsertPersonDirectory } from "@/lib/person-directory";
 
 export type ReviewState = {
   error?: string;
@@ -323,6 +324,16 @@ export async function adminUpdateReportAction(
       },
     }),
   ]);
+
+  if (esParaOtraPersona) {
+    await upsertPersonDirectory({
+      rut: finalizeParsed.data.beneficiarioRut,
+      nombre: beneficiarioNombre,
+      apellido: beneficiarioApellido,
+      segundoApellido: beneficiarioSegundoApellido,
+      email: beneficiarioEmail || null,
+    });
+  }
 
   // Si ya estaba Pagada, el expediente y el aviso al beneficiario ya habían
   // salido antes de esta corrección: se reenvían actualizados.
