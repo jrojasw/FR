@@ -233,11 +233,19 @@ export function ReportEditor({
   function handleSubmit() {
     setError(null);
 
+    if (!rut.trim()) {
+      failWith("Ingresa el RUT.", encabezadoRef);
+      return;
+    }
     if (!nombre.trim() || !apellido.trim() || !segundoApellido.trim() || !cargo.trim() || !fecha) {
       failWith(
         "Completa todos los datos del encabezado (nombre, apellido y segundo apellido son obligatorios).",
         encabezadoRef
       );
+      return;
+    }
+    if (esParaOtraPersona && !beneficiarioRut.trim()) {
+      failWith("Ingresa el RUT de la persona a nombre de quien se rinde.", encabezadoRef);
       return;
     }
     if (
@@ -259,14 +267,6 @@ export function ReportEditor({
     }
     if (!signatureData) {
       failWith("Falta la firma.", firmaRef);
-      return;
-    }
-    if (!rut.trim()) {
-      failWith("Ingresa el RUT.", firmaRef);
-      return;
-    }
-    if (esParaOtraPersona && !beneficiarioRut.trim()) {
-      failWith("Ingresa el RUT de la persona a nombre de quien se rinde.", firmaRef);
       return;
     }
 
@@ -369,6 +369,16 @@ export function ReportEditor({
         </p>
         <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
+            <label htmlFor="rut" className="block text-sm font-medium text-slate-700">RUT</label>
+            <input
+              id="rut"
+              value={rut}
+              onChange={(e) => setRut(formatRut(e.target.value))}
+              placeholder="12.345.678-9"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+            />
+          </div>
+          <div>
             <label htmlFor="nombre" className="block text-sm font-medium text-slate-700">Nombre</label>
             <input
               id="nombre"
@@ -425,6 +435,18 @@ export function ReportEditor({
               Datos de la persona a nombre de quien se rinde
             </p>
             <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="beneficiarioRut" className="block text-sm font-medium text-slate-700">RUT</label>
+                <input
+                  id="beneficiarioRut"
+                  value={beneficiarioRut}
+                  onChange={(e) => setBeneficiarioRut(formatRut(e.target.value))}
+                  onBlur={handleBeneficiarioRutBlur}
+                  placeholder="12.345.678-9"
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+                />
+                {rutLookupNotice ? <p className="mt-1 text-xs text-emerald-700">{rutLookupNotice}</p> : null}
+              </div>
               <div>
                 <label htmlFor="beneficiarioNombre" className="block text-sm font-medium text-slate-700">Nombre</label>
                 <input
@@ -679,36 +701,6 @@ export function ReportEditor({
         <div className="mt-4 max-w-xl">
           <SignaturePad onChange={setSignatureData} initialDataUrl={initial.signatureData} />
         </div>
-        <div className="mt-4 flex flex-wrap gap-4">
-          <div className="max-w-xs">
-            <label htmlFor="rut" className="block text-sm font-medium text-slate-700">
-              {esParaOtraPersona ? "RUT (quien rinde)" : "RUT"}
-            </label>
-            <input
-              id="rut"
-              value={rut}
-              onChange={(e) => setRut(formatRut(e.target.value))}
-              placeholder="12.345.678-9"
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
-            />
-          </div>
-          {esParaOtraPersona && (
-            <div className="max-w-xs">
-              <label htmlFor="beneficiarioRut" className="block text-sm font-medium text-slate-700">
-                RUT de {beneficiarioNombre.trim() || "la persona"}
-              </label>
-              <input
-                id="beneficiarioRut"
-                value={beneficiarioRut}
-                onChange={(e) => setBeneficiarioRut(formatRut(e.target.value))}
-                onBlur={handleBeneficiarioRutBlur}
-                placeholder="12.345.678-9"
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
-              />
-            </div>
-          )}
-        </div>
-        {rutLookupNotice ? <p className="mt-2 text-sm text-emerald-700">{rutLookupNotice}</p> : null}
       </section>
 
       <button
