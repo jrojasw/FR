@@ -23,6 +23,8 @@ public static class DependencyInjection
         services.AddScoped<IScrapeRunRepository, ScrapeRunRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ICatalogQueries, CatalogQueries>();
+        services.AddScoped<IClickRepository, ClickRepository>();
+        services.AddScoped<IClickReports, ClickReports>();
         return services;
     }
 

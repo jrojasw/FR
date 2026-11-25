@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /ir/
+Disallow: /admin/
+Disallow: /hangfire
+Disallow: /api/

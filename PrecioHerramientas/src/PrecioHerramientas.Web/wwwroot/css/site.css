@@ -29,3 +29,7 @@
     position: relative;
     height: 340px;
 }
+
+.tabular {
+    font-variant-numeric: tabular-nums;
+}

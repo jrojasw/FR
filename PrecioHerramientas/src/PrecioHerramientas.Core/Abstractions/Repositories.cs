@@ -57,3 +57,17 @@ public interface IUnitOfWork
     /// <summary>Libera las entidades rastreadas para que lotes grandes no acumulen memoria.</summary>
     void ClearTracking();
 }
+
+/// <summary>Adónde lleva un clic: tienda y URL guardada por el scraper.</summary>
+public sealed record ClickTarget(int StoreId, string StoreKey, string Url, int? ProductId);
+
+public interface IClickRepository
+{
+    /// <summary>Destino de una oferta de una tienda activa, o null.</summary>
+    Task<ClickTarget?> FindOfferTargetAsync(int offerId, CancellationToken ct = default);
+
+    /// <summary>Portada de una tienda activa, o null.</summary>
+    Task<ClickTarget?> FindStoreTargetAsync(string storeKey, CancellationToken ct = default);
+
+    void Add(Click click);
+}

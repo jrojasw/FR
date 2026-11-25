@@ -103,3 +103,21 @@ internal sealed class ScrapeRunConfiguration : IEntityTypeConfiguration<ScrapeRu
         b.HasOne(x => x.Store).WithMany(x => x.ScrapeRuns).HasForeignKey(x => x.StoreId).OnDelete(DeleteBehavior.Cascade);
     }
 }
+
+internal sealed class ClickConfiguration : IEntityTypeConfiguration<Click>
+{
+    public void Configure(EntityTypeBuilder<Click> b)
+    {
+        b.Property(x => x.AnonymizedIp).HasMaxLength(FieldLimits.AnonymizedIp);
+        b.Property(x => x.Referer).HasMaxLength(FieldLimits.Referer);
+
+        b.HasIndex(x => x.ClickedAt);
+        b.HasIndex(x => new { x.StoreId, x.ClickedAt });
+        b.HasIndex(x => new { x.ProductId, x.ClickedAt });
+
+        // Los clics se conservan aunque se borre la oferta o el producto (p. ej. al fusionar duplicados).
+        b.HasOne(x => x.Offer).WithMany().HasForeignKey(x => x.OfferId).OnDelete(DeleteBehavior.SetNull);
+        b.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.SetNull);
+        b.HasOne(x => x.Store).WithMany().HasForeignKey(x => x.StoreId).OnDelete(DeleteBehavior.Cascade);
+    }
+}

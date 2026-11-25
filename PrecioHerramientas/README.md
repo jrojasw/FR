@@ -194,6 +194,44 @@ otra tienda que también se sigue (p. ej. Imperial vendiendo en sodimac.cl), la 
 oculta cuando esa tienda ya tiene una oferta del mismo producto al mismo precio, y si
 no se muestra como "Imperial (vía Sodimac)".
 
+## Afiliados y clics
+
+Todos los links hacia las tiendas pasan por la web: `/ir/{id de la oferta}` (botones
+"Ver" e "Ir a la tienda") y `/ir/tienda/{clave}` (página de tiendas). Cada visita
+registra un clic (tabla `clicks`: oferta, producto, tienda, fecha, IP anonimizada a
+/24 o /48 y página de origen) y redirige con **302** al link de afiliado de la
+tienda. Los robots de buscadores y redes sociales se redirigen sin contarse. Solo se
+redirige a URLs guardadas por los scrapers, nunca a una dirección recibida en la
+petición.
+
+El link de salida lo arma `IAffiliateLinkService` según el programa de cada tienda,
+configurado en `Affiliates` (nunca en el código):
+
+| Programa | Link | Configuración |
+| --- | --- | --- |
+| `Awin` | `https://www.awin1.com/cread.php?awinmid={MerchantId}&awinaffid={AffiliateId}&clickref={id del clic}&ued={url codificada}` | `MerchantId`, `AffiliateId` |
+| `QueryParameters` | La URL del producto con los parámetros agregados (reemplaza los que ya tenga; `{clickref}` = id del clic) | `Parameters` |
+| `Direct` (por defecto) | La URL tal cual | — |
+
+```json
+"Affiliates": {
+  "Stores": {
+    "paris": { "Program": "Awin", "MerchantId": "", "AffiliateId": "" },
+    "mercadolibre": { "Program": "QueryParameters", "Parameters": { "nombre_parametro": "valor" } }
+  }
+}
+```
+
+En Railway se completan con variables, por ejemplo `Affiliates__Stores__paris__MerchantId`,
+`Affiliates__Stores__paris__AffiliateId` o
+`Affiliates__Stores__mercadolibre__Parameters__nombre_parametro`. Si a una tienda le
+faltan datos, se usa el link directo y el log lo avisa una vez. Una tienda nueva de un
+programa existente solo necesita configuración; un programa nuevo es una clase que
+implementa `IAffiliateLinkBuilder`, registrada en `Core/ServiceCollectionExtensions.cs`.
+
+**Panel de clics:** `/admin/clics` (mismo usuario y clave que `/hangfire`) muestra los
+clics por tienda y los productos más clicados, por período (hoy, 7 días, 30 días, todo).
+
 ## Sitio web
 
 | Ruta | Contenido |
@@ -205,6 +243,8 @@ no se muestra como "Imperial (vía Sodimac)".
 | `/api/productos?q=` | Búsqueda en JSON |
 | `/api/productos/{id}/historial?dias=90` | Series de precio por tienda (lo usa el gráfico) |
 | `/health` | Health check (incluye la base de datos) |
+| `/ir/{id}`, `/ir/tienda/{clave}` | Salida a la tienda: registra el clic y redirige (302) al link de afiliado |
+| `/admin/clics` | Clics por tienda y por producto (HTTP Basic) |
 | `/hangfire` | Dashboard de trabajos (HTTP Basic) |
 
 ## Despliegue en Railway

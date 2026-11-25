@@ -1,0 +1,81 @@
+@page "/admin/clics"
+@model PrecioHerramientas.Web.Pages.Admin.ClicksModel
+@{
+    ViewData["Title"] = "Clics";
+    var total = Model.Summary.Total;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Clics hacia las tiendas</h1>
+    <div class="btn-group btn-group-sm" role="group" aria-label="Período">
+        @foreach (var (days, label) in PrecioHerramientas.Web.Pages.Admin.ClicksModel.Periods)
+        {
+            <a class="btn btn-outline-secondary @(days == Model.Days ? "active" : "")" href="/admin/clics?dias=@days">@label</a>
+        }
+    </div>
+</div>
+
+<p class="text-muted">
+    <strong>@total.ToString("N0")</strong> clics en el período. Los robots de buscadores y redes sociales no se cuentan.
+</p>
+
+<div class="row g-4">
+    <section class="col-lg-5">
+        <h2 class="h5">Por tienda</h2>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Tienda</th>
+                        <th class="text-end">Clics</th>
+                        <th class="text-end">%</th>
+                        <th class="d-none d-sm-table-cell">Último</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model.Summary.ByStore)
+                    {
+                        <tr class="@(s.Clicks == 0 ? "text-muted" : "")">
+                            <td>@s.StoreName</td>
+                            <td class="text-end tabular">@s.Clicks.ToString("N0")</td>
+                            <td class="text-end tabular">@(total == 0 ? "—" : $"{s.Clicks * 100.0 / total:0.#}%")</td>
+                            <td class="small d-none d-sm-table-cell">@(s.LastClickAt is { } at ? Format.DateTime(at) : "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="col-lg-7">
+        <h2 class="h5">Productos más clicados</h2>
+        @if (Model.Summary.TopProducts.Count == 0)
+        {
+            <p class="text-muted">Aún no hay clics en este período.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="text-end">Clics</th>
+                            <th class="d-none d-sm-table-cell">Último</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model.Summary.TopProducts)
+                        {
+                            <tr>
+                                <td><a href="/producto/@p.Slug">@p.Name</a></td>
+                                <td class="text-end tabular">@p.Clicks.ToString("N0")</td>
+                                <td class="small d-none d-sm-table-cell">@Format.DateTime(p.LastClickAt)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

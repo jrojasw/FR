@@ -19,6 +19,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Offer> Offers => Set<Offer>();
     public DbSet<PricePoint> PricePoints => Set<PricePoint>();
     public DbSet<ScrapeRun> ScrapeRuns => Set<ScrapeRun>();
+    public DbSet<Click> Clicks => Set<Click>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

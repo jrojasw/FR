@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 using PrecioHerramientas.Core;
+using PrecioHerramientas.Core.Affiliates;
 using PrecioHerramientas.Core.Queries;
 using PrecioHerramientas.Core.Services;
 using PrecioHerramientas.Infrastructure;
@@ -21,6 +22,7 @@ if (Environment.GetEnvironmentVariable("PORT") is { Length: > 0 } port)
 builder.Services.AddRazorPages();
 builder.Services.AddCore();
 builder.Services.Configure<IngestionOptions>(configuration.GetSection(IngestionOptions.SectionName));
+builder.Services.Configure<AffiliateOptions>(configuration.GetSection(AffiliateOptions.SectionName));
 builder.Services.AddInfrastructure(configuration);
 builder.Services.AddScrapers(configuration);
 // Las claves de Data Protection (antiforgery del dashboard de Hangfire) se guardan en
@@ -72,6 +74,17 @@ app.UseStatusCodePagesWithReExecute("/NotFound", "?code={0}");
 app.UseStaticFiles();
 app.UseRouting();
 
+// Panel de administración (/admin/...): mismo usuario y clave que el dashboard de Hangfire.
+app.UseWhen(http => http.Request.Path.StartsWithSegments("/admin"), admin => admin.Use(async (http, next) =>
+{
+    if (!BasicAuth.IsAuthorized(http, hangfireSettings.DashboardUser, hangfireSettings.DashboardPassword, "Administracion"))
+    {
+        http.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return;
+    }
+    await next(http);
+}));
+
 app.MapRazorPages();
 app.MapHealthChecks("/health");
 
@@ -81,6 +94,27 @@ app.MapHangfireDashboard(hangfireSettings.DashboardPath, new DashboardOptions
     Authorization = [new HangfireBasicAuthFilter(hangfireSettings.DashboardUser, hangfireSettings.DashboardPassword)],
     AppPath = "/",
 });
+
+// Salida hacia las tiendas: registra el clic y redirige (302) al link de afiliado de la tienda.
+// Solo se redirige a URLs guardadas por los scrapers, nunca a una dirección recibida en la petición.
+var outbound = app.MapGroup("/ir");
+outbound.MapGet("/{id:int}", async (int id, HttpContext http, ClickRedirectService clicks, CancellationToken ct) =>
+    await clicks.ForOfferAsync(id, Visitor(http), ct) is { } url ? Outbound(http, url) : Results.NotFound());
+outbound.MapGet("/tienda/{key}", async (string key, HttpContext http, ClickRedirectService clicks, CancellationToken ct) =>
+    await clicks.ForStoreAsync(key, Visitor(http), ct) is { } url ? Outbound(http, url) : Results.NotFound());
+
+static ClickVisitor Visitor(HttpContext http) => new(
+    http.Connection.RemoteIpAddress,
+    http.Request.Headers.Referer.ToString() is { Length: > 0 } referer ? referer : null,
+    http.Request.Headers.UserAgent.ToString());
+
+static IResult Outbound(HttpContext http, string url)
+{
+    // Cada clic debe llegar al servidor: sin caché, y fuera de los índices de buscadores.
+    http.Response.Headers.CacheControl = "no-store";
+    http.Response.Headers["X-Robots-Tag"] = "noindex, nofollow";
+    return Results.Redirect(url, permanent: false);
+}
 
 var api = app.MapGroup("/api");
 api.MapGet("/productos", async (string? q, int? pagina, ICatalogQueries queries, CancellationToken ct) =>

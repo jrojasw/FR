@@ -102,3 +102,20 @@ internal sealed class UnitOfWork(AppDbContext db) : IUnitOfWork
     public Task SaveChangesAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
     public void ClearTracking() => db.ChangeTracker.Clear();
 }
+
+internal sealed class ClickRepository(AppDbContext db) : IClickRepository
+{
+    public Task<ClickTarget?> FindOfferTargetAsync(int offerId, CancellationToken ct = default) =>
+        db.Offers.AsNoTracking()
+            .Where(o => o.Id == offerId && o.Store.IsActive)
+            .Select(o => new ClickTarget(o.StoreId, o.Store.Key, o.Url, o.ProductId))
+            .FirstOrDefaultAsync(ct);
+
+    public Task<ClickTarget?> FindStoreTargetAsync(string storeKey, CancellationToken ct = default) =>
+        db.Stores.AsNoTracking()
+            .Where(s => s.Key == storeKey && s.IsActive)
+            .Select(s => new ClickTarget(s.Id, s.Key, s.BaseUrl, null))
+            .FirstOrDefaultAsync(ct);
+
+    public void Add(Click click) => db.Clicks.Add(click);
+}

@@ -108,6 +108,59 @@ namespace PrecioHerramientas.Infrastructure.Persistence.Migrations
                     b.ToTable("categories", (string)null);
                 });
 
+            modelBuilder.Entity("PrecioHerramientas.Core.Entities.Click", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AnonymizedIp")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)")
+                        .HasColumnName("anonymized_ip");
+
+                    b.Property<DateTime>("ClickedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("clicked_at");
+
+                    b.Property<int?>("OfferId")
+                        .HasColumnType("integer")
+                        .HasColumnName("offer_id");
+
+                    b.Property<int?>("ProductId")
+                        .HasColumnType("integer")
+                        .HasColumnName("product_id");
+
+                    b.Property<string>("Referer")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("referer");
+
+                    b.Property<int>("StoreId")
+                        .HasColumnType("integer")
+                        .HasColumnName("store_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_clicks");
+
+                    b.HasIndex("ClickedAt")
+                        .HasDatabaseName("ix_clicks_clicked_at");
+
+                    b.HasIndex("OfferId")
+                        .HasDatabaseName("ix_clicks_offer_id");
+
+                    b.HasIndex("ProductId", "ClickedAt")
+                        .HasDatabaseName("ix_clicks_product_id_clicked_at");
+
+                    b.HasIndex("StoreId", "ClickedAt")
+                        .HasDatabaseName("ix_clicks_store_id_clicked_at");
+
+                    b.ToTable("clicks", (string)null);
+                });
+
             modelBuilder.Entity("PrecioHerramientas.Core.Entities.Offer", b =>
                 {
                     b.Property<int>("Id")
@@ -472,6 +525,34 @@ namespace PrecioHerramientas.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_stores_key");
 
                     b.ToTable("stores", (string)null);
+                });
+
+            modelBuilder.Entity("PrecioHerramientas.Core.Entities.Click", b =>
+                {
+                    b.HasOne("PrecioHerramientas.Core.Entities.Offer", "Offer")
+                        .WithMany()
+                        .HasForeignKey("OfferId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_clicks_offers_offer_id");
+
+                    b.HasOne("PrecioHerramientas.Core.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_clicks_products_product_id");
+
+                    b.HasOne("PrecioHerramientas.Core.Entities.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_clicks_stores_store_id");
+
+                    b.Navigation("Offer");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Store");
                 });
 
             modelBuilder.Entity("PrecioHerramientas.Core.Entities.Offer", b =>

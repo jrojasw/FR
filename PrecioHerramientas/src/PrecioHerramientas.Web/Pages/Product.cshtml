@@ -54,7 +54,7 @@
                         <div class="display-6 fw-bold text-success">@Format.Price(best.Offer.Price)</div>
                         <div class="small">en <strong>@best.StoreLabel</strong>@(best.Offer.BranchName is null ? "" : $" · sucursal {best.Offer.BranchName}")@(best.SellerNote is null ? "" : $" · {best.SellerNote.ToLowerInvariant()}")</div>
                     </div>
-                    <a href="@best.Offer.Url" class="btn btn-success btn-lg" target="_blank" rel="nofollow noopener noreferrer">Ir a la tienda</a>
+                    <a href="/ir/@best.Offer.OfferId" class="btn btn-success btn-lg" target="_blank" rel="sponsored nofollow noopener">Ir a la tienda</a>
                 </div>
             </div>
         }
