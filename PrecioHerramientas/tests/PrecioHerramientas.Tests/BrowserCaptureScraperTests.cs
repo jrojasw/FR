@@ -439,6 +439,32 @@ public class BrowserCaptureScraperTests
     }
 
     [Fact]
+    public void Paris_lee_la_pagina_real_de_busqueda()
+    {
+        // Extracto real de https://www.paris.cl/search?q=taladro (noviembre 2026).
+        var result = ParisSearchParser.Parse(Fixture.Read("paris-search-real.html"), new Uri("https://www.paris.cl"));
+
+        Assert.Equal(30, result.Products.Count);
+        Assert.Equal(1057, result.Total);
+        Assert.Equal(30, result.Products.Select(p => p.ExternalId).Distinct().Count());
+        Assert.All(result.Products, p =>
+        {
+            Assert.Matches(@"^[A-Z0-9]+-\d+$", p.ExternalId);
+            Assert.True(p.Price > 0);
+            Assert.False(string.IsNullOrWhiteSpace(p.Brand));
+            Assert.StartsWith("https://www.paris.cl/", p.Url);
+            Assert.DoesNotContain("Ã", p.Title);
+        });
+
+        var kit = result.Products[0];
+        Assert.Equal("MKDM2NZDKN-1", kit.ExternalId);
+        Assert.Equal("Kit Taladro Destornillador Inalámbrico LERNEN 21V + 2 Baterías + Accesorios", kit.Title);
+        Assert.Equal(29990m, kit.Price);
+        Assert.Equal("LERNEN", kit.Brand);
+        Assert.Equal("https://www.paris.cl/kit-taladro-destornillador-inalambrico-lernen-21v-2-baterias-accesorios-MKDM2NZDKN.html", kit.Url);
+    }
+
+    [Fact]
     public void Paris_sin_ItemList_no_entrega_productos()
     {
         var result = ParisSearchParser.Parse("<html><body><script>self.__next_f.push([1,\"0:{}\"])</script></body></html>", new Uri("https://www.paris.cl"));
