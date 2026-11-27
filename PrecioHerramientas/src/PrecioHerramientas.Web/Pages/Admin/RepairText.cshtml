@@ -1,0 +1,73 @@
+@page "/admin/reparar-textos"
+@model PrecioHerramientas.Web.Pages.Admin.RepairTextModel
+@{
+    ViewData["Title"] = "Reparar tildes";
+    var report = Model.Report;
+    var shown = Model.Applied ?? report;
+}
+
+<h1 class="h3">Reparar tildes y eñes dañadas</h1>
+<p class="text-muted">
+    Busca textos como "VÃ¡lvula" o "4 1/2â€³" y los convierte en "Válvula" y "4 1/2″".
+    No borra productos ni historial de precios.
+</p>
+
+@if (Model.Applied is { } applied)
+{
+    <div class="alert alert-success">
+        Listo: se aplicaron <strong>@applied.Count</strong> cambios@(applied.Merges.Count > 0 ? $" y {applied.Merges.Count} fusiones" : "").
+        Quedan @report.Count por reparar.
+    </div>
+}
+else if (report.Count == 0)
+{
+    <div class="alert alert-success">No hay textos dañados.</div>
+}
+else
+{
+    <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span>Vista previa: <strong>@report.Count</strong> cambios@(report.Merges.Count > 0 ? $" y {report.Merges.Count} fusiones" : ""). Todavía no se guardó nada.</span>
+        <form method="post">
+            <button type="submit" class="btn btn-warning">Aplicar reparación</button>
+        </form>
+    </div>
+}
+
+@if (shown.Count > 0)
+{
+    <h2 class="h5 mt-4">Por campo</h2>
+    <ul class="list-inline">
+        @foreach (var g in shown.Changes.GroupBy(c => $"{c.Table}.{c.Field}").OrderByDescending(g => g.Count()))
+        {
+            <li class="list-inline-item badge text-bg-light border">@g.Key: @g.Count()</li>
+        }
+    </ul>
+
+    <h2 class="h5 mt-3">Ejemplos (primeros 10)</h2>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead><tr><th>Campo</th><th>Antes</th><th>Después</th></tr></thead>
+            <tbody>
+                @foreach (var c in shown.Changes.Take(10))
+                {
+                    <tr>
+                        <td class="small text-muted text-nowrap">@c.Table.@c.Field #@c.Id</td>
+                        <td class="text-danger">@c.Before</td>
+                        <td class="text-success">@c.After</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (shown.Merges.Count > 0)
+    {
+        <h2 class="h5 mt-3">Fusiones</h2>
+        <ul class="small">
+            @foreach (var m in shown.Merges)
+            {
+                <li>@m</li>
+            }
+        </ul>
+    }
+}

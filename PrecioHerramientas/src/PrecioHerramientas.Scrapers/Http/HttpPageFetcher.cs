@@ -22,6 +22,6 @@ public sealed class HttpPageFetcher(IHttpClientFactory httpClientFactory, ILogge
             return null;
         }
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync(ct);
+        return await HttpText.ReadAsync(response.Content, ct);
     }
 }

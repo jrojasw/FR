@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PrecioHerramientas.Core.Abstractions;
 using PrecioHerramientas.Core.Queries;
+using PrecioHerramientas.Core.Services;
 using PrecioHerramientas.Infrastructure.Persistence;
 using PrecioHerramientas.Infrastructure.Queries;
 using PrecioHerramientas.Infrastructure.Repositories;
@@ -25,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<ICatalogQueries, CatalogQueries>();
         services.AddScoped<IClickRepository, ClickRepository>();
         services.AddScoped<IClickReports, ClickReports>();
+        services.AddScoped<ITextRepairService, Maintenance.TextRepairService>();
         return services;
     }
 

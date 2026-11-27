@@ -20,6 +20,9 @@ if (Environment.GetEnvironmentVariable("PORT") is { Length: > 0 } port)
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 builder.Services.AddRazorPages();
+// Las páginas salen en UTF-8 con tildes y eñes tal cual ("batería"), no como entidades ("bater&#xED;a").
+builder.Services.Configure<Microsoft.Extensions.WebEncoders.WebEncoderOptions>(options =>
+    options.TextEncoderSettings = new System.Text.Encodings.Web.TextEncoderSettings(System.Text.Unicode.UnicodeRanges.All));
 builder.Services.AddCore();
 builder.Services.Configure<IngestionOptions>(configuration.GetSection(IngestionOptions.SectionName));
 builder.Services.Configure<AffiliateOptions>(configuration.GetSection(AffiliateOptions.SectionName));

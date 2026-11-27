@@ -138,15 +138,17 @@ public sealed class PriceIngestionService(
         var clean = item with
         {
             ExternalId = Fit(item.ExternalId.Trim(), FieldLimits.ExternalId, "id")!,
-            Title = Fit(TextNormalizer.CleanWhitespace(item.Title), FieldLimits.OfferTitle, "título")!,
+            // Textos con tildes dañadas ("VÃ¡lvula") se reparan antes de guardar, vengan de donde vengan.
+            Title = Fit(TextNormalizer.CleanWhitespace(TextRepair.Fix(item.Title)!), FieldLimits.OfferTitle, "título")!,
             Url = Fit(item.Url, FieldLimits.Url, "url")!,
             ImageUrl = Fit(item.ImageUrl, FieldLimits.Url, "imagen"),
-            Brand = Fit(item.Brand?.Trim(), FieldLimits.BrandRaw, "marca"),
-            Model = Fit(item.Model?.Trim(), FieldLimits.ModelRaw, "modelo"),
+            Brand = Fit(TextRepair.Fix(item.Brand?.Trim()), FieldLimits.BrandRaw, "marca"),
+            Model = Fit(TextRepair.Fix(item.Model?.Trim()), FieldLimits.ModelRaw, "modelo"),
             Ean = Fit(item.Ean?.Trim(), FieldLimits.OfferEan, "ean"),
             BranchCode = Fit(item.BranchCode?.Trim(), FieldLimits.BranchCode, "sucursal"),
-            BranchName = Fit(item.BranchName?.Trim(), FieldLimits.BranchName, "nombre de sucursal"),
-            Seller = Fit(string.IsNullOrWhiteSpace(item.Seller) ? null : TextNormalizer.CleanWhitespace(item.Seller), FieldLimits.Seller, "vendedor"),
+            BranchName = Fit(TextRepair.Fix(item.BranchName?.Trim()), FieldLimits.BranchName, "nombre de sucursal"),
+            Seller = Fit(string.IsNullOrWhiteSpace(item.Seller) ? null : TextNormalizer.CleanWhitespace(TextRepair.Fix(item.Seller)!), FieldLimits.Seller, "vendedor"),
+            Category = TextRepair.Fix(item.Category),
         };
         if (cut.Count > 0)
             logger.LogWarning("Producto {ExternalId} con campos demasiado largos, se recortaron: {Fields}", clean.ExternalId, string.Join(", ", cut));

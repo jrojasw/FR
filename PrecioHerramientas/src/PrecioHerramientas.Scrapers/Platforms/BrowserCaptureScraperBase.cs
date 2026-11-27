@@ -223,7 +223,7 @@ public abstract class BrowserCaptureScraperBase(IServiceProvider services, IOpti
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
         if (!response.IsSuccessStatusCode)
             throw new HttpRequestException($"HTTP {(int)response.StatusCode} en {url}", null, response.StatusCode);
-        return await response.Content.ReadAsStringAsync(ct);
+        return await HttpText.ReadAsync(response.Content, ct);
     }
 
     protected async Task<IBrowserSession> SessionAsync(CancellationToken ct) =>

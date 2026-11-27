@@ -232,6 +232,25 @@ implementa `IAffiliateLinkBuilder`, registrada en `Core/ServiceCollectionExtensi
 **Panel de clics:** `/admin/clics` (mismo usuario y clave que `/hangfire`) muestra los
 clics por tienda y los productos más clicados, por período (hoy, 7 días, 30 días, todo).
 
+## Tildes y eñes (UTF-8)
+
+Todo se lee, guarda y muestra en UTF-8:
+
+- **Lectura:** `HttpText` lee como UTF-8 cualquier respuesta cuyos bytes lo sean, aunque
+  el servidor declare otra codificación (hay tiendas que declaran `ISO-8859-1` y envían
+  UTF-8).
+- **Ingesta:** antes de guardar, `TextRepair.Fix` repara el *mojibake* que llegue de
+  cualquier tienda ("VÃ¡lvula" → "Válvula", "4 1/2â€³" → "4 1/2″"). Ese daño viene de
+  leer UTF-8 como Windows-1252: lo hace el navegador (Playwright) cuando el sitio
+  declara mal su codificación, o ya viene así en el catálogo de la tienda. Solo toca
+  secuencias que forman UTF-8 válido, así que el texto correcto no cambia.
+- **Datos ya guardados:** `/admin/reparar-textos` (mismo usuario y clave que `/hangfire`)
+  muestra cuántos textos cambiarían y 10 ejemplos de antes/después **sin guardar nada**.
+  El botón "Aplicar reparación" los corrige en una transacción: nombres de productos
+  (con su slug y texto de búsqueda), títulos, marcas, modelos, vendedores y sucursales de
+  ofertas, marcas y categorías. Si la versión reparada de una marca o categoría ya
+  existe, se fusionan. No borra productos ni historial de precios.
+
 ## Sitio web
 
 | Ruta | Contenido |
@@ -245,6 +264,7 @@ clics por tienda y los productos más clicados, por período (hoy, 7 días, 30 d
 | `/health` | Health check (incluye la base de datos) |
 | `/ir/{id}`, `/ir/tienda/{clave}` | Salida a la tienda: registra el clic y redirige (302) al link de afiliado |
 | `/admin/clics` | Clics por tienda y por producto (HTTP Basic) |
+| `/admin/reparar-textos` | Vista previa y reparación de tildes dañadas (HTTP Basic) |
 | `/hangfire` | Dashboard de trabajos (HTTP Basic) |
 
 ## Despliegue en Railway

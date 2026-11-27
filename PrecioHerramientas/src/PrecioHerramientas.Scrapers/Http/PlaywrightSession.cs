@@ -85,13 +85,17 @@ internal sealed class PlaywrightSession(IBrowserContext context, float timeoutMs
         {
             var body = await response.BodyAsync();
             if (body.Length <= MaxCapturedBytes)
-                captured.Enqueue(new CapturedJson(response.Url, System.Text.Encoding.UTF8.GetString(body)));
+                captured.Enqueue(new CapturedJson(response.Url, HttpText.Decode(body, Charset(response.Headers))));
         }
         catch (PlaywrightException)
         {
             // La página navegó y descartó la respuesta antes de leerla.
         }
     }
+
+    private static string? Charset(IReadOnlyDictionary<string, string> headers) =>
+        headers.TryGetValue("content-type", out var type)
+        && System.Net.Http.Headers.MediaTypeHeaderValue.TryParse(type, out var media) ? media.CharSet : null;
 
     public async Task<string?> GetAsync(string url, CancellationToken ct)
     {
@@ -105,7 +109,7 @@ internal sealed class PlaywrightSession(IBrowserContext context, float timeoutMs
         if (!response.Ok)
             throw new HttpRequestException($"HTTP {response.Status} en {url}", null, (System.Net.HttpStatusCode)response.Status);
         ct.ThrowIfCancellationRequested();
-        return await response.TextAsync();
+        return HttpText.Decode(await response.BodyAsync(), Charset(response.Headers));
     }
 
     private async Task<IPage> PageAsync() => _page ??= await PlaywrightPageFetcher.NewPageAsync(context);
