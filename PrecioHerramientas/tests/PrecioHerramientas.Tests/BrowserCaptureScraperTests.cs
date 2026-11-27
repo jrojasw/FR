@@ -419,4 +419,95 @@ public class BrowserCaptureScraperTests
         Assert.Equal(2, products.Count);
         Assert.Equal(49990m, products[0].Price);   // grilla renderizada, precio final prioritario
     }
+
+    // ---------- Paris: JSON-LD dentro de los datos de React ----------
+
+    [Fact]
+    public void Paris_lee_el_ItemList_repartido_en_varios_fragmentos_de_next_f()
+    {
+        var result = ParisSearchParser.Parse(Fixture.Read("paris-search-page.html"), new Uri("https://www.paris.cl"));
+
+        Assert.Equal(3, result.Total);
+        Assert.Equal(["MKDM2NZDKN-1", "MKGYHODX7K-1"], result.Products.Select(p => p.ExternalId));
+        var kit = result.Products[0];
+        Assert.Equal("Kit Taladro Destornillador Inalámbrico LERNEN 21V + 2 Baterías", kit.Title);
+        Assert.Equal(29990m, kit.Price);
+        Assert.Equal("LERNEN", kit.Brand);
+        Assert.StartsWith("https://www.paris.cl/", kit.Url);
+        // Las llaves dentro de un nombre no confunden el corte del JSON.
+        Assert.Equal("Taladro Percutor {Pro} 13mm 750W", result.Products[1].Title);
+    }
+
+    [Fact]
+    public void Paris_lee_la_pagina_real_de_busqueda()
+    {
+        // Extracto real de https://www.paris.cl/search?q=taladro (noviembre 2026).
+        var result = ParisSearchParser.Parse(Fixture.Read("paris-search-real.html"), new Uri("https://www.paris.cl"));
+
+        Assert.Equal(30, result.Products.Count);
+        Assert.Equal(1057, result.Total);
+        Assert.Equal(30, result.Products.Select(p => p.ExternalId).Distinct().Count());
+        Assert.All(result.Products, p =>
+        {
+            Assert.Matches(@"^[A-Z0-9]+-\d+$", p.ExternalId);
+            Assert.True(p.Price > 0);
+            Assert.False(string.IsNullOrWhiteSpace(p.Brand));
+            Assert.StartsWith("https://www.paris.cl/", p.Url);
+            Assert.DoesNotContain("Ã", p.Title);
+        });
+
+        var kit = result.Products[0];
+        Assert.Equal("MKDM2NZDKN-1", kit.ExternalId);
+        Assert.Equal("Kit Taladro Destornillador Inalámbrico LERNEN 21V + 2 Baterías + Accesorios", kit.Title);
+        Assert.Equal(29990m, kit.Price);
+        Assert.Equal("LERNEN", kit.Brand);
+        Assert.Equal("https://www.paris.cl/kit-taladro-destornillador-inalambrico-lernen-21v-2-baterias-accesorios-MKDM2NZDKN.html", kit.Url);
+    }
+
+    [Fact]
+    public void Paris_sin_ItemList_no_entrega_productos()
+    {
+        var result = ParisSearchParser.Parse("<html><body><script>self.__next_f.push([1,\"0:{}\"])</script></body></html>", new Uri("https://www.paris.cl"));
+
+        Assert.Empty(result.Products);
+        Assert.Null(result.Total);
+    }
+
+    [Fact]
+    public async Task Paris_pagina_por_HTTP_hasta_completar_el_total()
+    {
+        var requested = new List<string>();
+        var session = new FakeBrowserSession(_ => throw new InvalidOperationException("No debía usarse el navegador"));
+        var services = With(session, req =>
+        {
+            var url = req.RequestUri!.PathAndQuery;
+            requested.Add(url);
+            return url switch
+            {
+                "/search?q=taladro" => Html(Fixture.Read("paris-search-page.html")),
+                "/search?q=taladro&page=2" => Html(Fixture.Read("paris-search-page2.html")),
+                _ => Status(System.Net.HttpStatusCode.NotFound),
+            };
+        });
+
+        var products = await CollectAsync(new ParisScraper(services, OptionsFor(ParisScraper.Key, "taladro"), NullLogger<ParisScraper>.Instance).ScrapeAsync());
+
+        Assert.Equal(["MKDM2NZDKN-1", "MKGYHODX7K-1", "EABA6PUXX3-1"], products.Select(p => p.ExternalId));
+        // numberOfItems = 3: con la página 2 ya están todos.
+        Assert.Equal(["/search?q=taladro", "/search?q=taladro&page=2"], requested);
+        Assert.Equal(0, session.Opened);
+    }
+
+    [Fact]
+    public async Task Paris_pasa_a_Chromium_si_HTTP_es_bloqueado()
+    {
+        var session = new FakeBrowserSession(url => url.Contains("/search") ? Page(url, Fixture.Read("paris-search-page.html")) : Page(url));
+        var services = With(session, _ => Status(System.Net.HttpStatusCode.Forbidden));
+
+        var products = await CollectAsync(new ParisScraper(services, OptionsFor(ParisScraper.Key, "taladro"), NullLogger<ParisScraper>.Instance).ScrapeAsync());
+
+        Assert.Equal(2, products.Count);
+        Assert.Equal("https://www.paris.cl/", session.Loaded[0]);   // primero la portada, por las cookies
+        Assert.Equal("https://www.paris.cl/search?q=taladro", session.Loaded[1]);
+    }
 }
