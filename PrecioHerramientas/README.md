@@ -128,7 +128,7 @@ Todo se puede definir en `appsettings.json` o por variables de entorno
 | `easy` | Easy | JSON de Next.js por HTTP: la página `/search/{término}` trae en `__NEXT_DATA__` los productos (`pageProps.serverProductsResponse.productList`), el total (`recordsFiltered`) y el `buildId`; las páginas siguientes salen de `/_next/data/{buildId}/search/{término}.json?search={término}&page=N`. El `buildId` se lee en cada ejecución (y se relee si Easy publica una versión nueva). Si Easy bloquea HTTP se usa Chromium; si la página no trae ese JSON, se leen las respuestas que pide la página |
 | `sodimac` | Sodimac | Búsqueda `/sodimac-cl/buscar?Ntt=…`; lee el JSON `__NEXT_DATA__` (`props.pageProps.results`). Pide primero por HTTP y, si la tienda lo bloquea o no entrega ese JSON, cambia a Chromium (Playwright). Ignora el precio con tarjeta CMR; el precio tachado queda como precio normal. Guarda el vendedor de cada publicación (marketplace) y usa como id el SKU de la URL (`/product/{productId}/{nombre}/{skuId}`), igual al leer el JSON o la grilla, para no duplicar publicaciones |
 | `imperial` | Imperial | API de búsqueda guiada de Oracle Commerce: `/ccstore/v1/assembler/pages/Default/services/guidedsearch?Ntt={término}&searchType=simple&Nrpp=36` resuelve el término (p. ej. "taladro" → `N-1033696118`) y `/guidedsearch/_/N-…?Nrpp=36&No={offset}` entrega los productos (`sku.activePrice`, `sku.availabilityStatus`, `product.route`…) y `totalNumRecs`. HTTP con encabezados de navegador; si responde 403, la API se pide dentro de una sesión de Chromium. Una búsqueda `N-…` se usa directo como categoría |
-| `construmart` | Construmart | Magento 2, **precio y stock por sucursal**. En una sola sesión de Chromium: lee las sucursales de las regiones configuradas desde el modal "Elige tu tienda" (o de `Branches:List`), fija cada sucursal y corre todas las búsquedas en ella (`/catalogsearch/result/?q=`, que redirige a una categoría; paginación `?p=N`). Precio desde `data-price-amount`, SKU desde `data-product-sku`. Corre dos veces al día con 3 s entre peticiones |
+| `construmart` | Construmart | Magento 2, **precio y stock por sucursal** (cada sucursal es un grupo de clientes). En una sola sesión de Chromium: lee las sucursales de las regiones configuradas desde el modal "Elige tu tienda" (`#region-selector-popup` → `#store-selector-popup`; la Región Metropolitana se llama "REGIÓN METROPOLITANA DE SANTIAGO") y fija cada una con el mismo `POST /catalogswitcher/switch/customergroup` que hace el sitio (respaldo: el modal y el botón "Entrar a Construmart.cl"). Corre todas las búsquedas por sucursal (`/catalogsearch/result/?q=` redirige a una categoría; paginación `?p=N`) y lee solo la grilla de resultados (`#amasty-shopby-product-list`). Si el sitio ya no ofrece sucursales, usa los precios generales. Dos veces al día, 3 s entre peticiones |
 
 > **Importante:** las URLs, el JSON y los selectores de Easy, Sodimac e Imperial se
 > escribieron según la estructura documentada públicamente de cada plataforma, pero **no se
@@ -174,16 +174,18 @@ menor precio entre sus sucursales.
   "Branches": {
     "Regions": ["Metropolitana"],          // agregar "Valparaíso", "Biobío"... para más regiones
     "List": [],                            // opcional: [{ "Id": "...", "Name": "Maipú", "Region": "Metropolitana" }]
-    "CookieName": null,                    // si se conoce la cookie de la sucursal, se fija sin abrir el modal
-    "Selectors": {}                        // OpenModal, Region, Store, Confirm (si el modal cambia)
+    "CookieName": null,                    // fija la sucursal con esta cookie (p. ej. "persistent_customer_group_id")
+    "SwitchUrl": null,                     // POST que guarda la sucursal; por defecto /catalogswitcher/switch/customergroup; "" = usar el modal
+    "SwitchField": null,                   // campo del POST; por defecto "customer_group_id"
+    "Selectors": {}                        // OpenModal, Region, Store, Confirm (si el modal cambia; se prueban en orden)
   }
 }
 ```
 
-Al elegir la primera sucursal, el log indica qué cookies cambió el sitio
-(`construmart: al elegir la sucursal ... cambiaron las cookies: ...`). Si una guarda el
-id de la sucursal, configurar `CookieName` y `List` evita abrir el modal en cada
-sucursal.
+Las alternativas de cada selector ("a, b, c") se prueban **en orden**: el modal tiene un
+par de selects iguales en el encabezado, dentro de un panel cerrado, que no se pueden
+usar. Si Construmart responde 403 al navegador (filtro anti-bots), el error lo dice
+explícitamente en vez de "no se encontraron sucursales".
 
 ### Vendedores y publicaciones repetidas
 

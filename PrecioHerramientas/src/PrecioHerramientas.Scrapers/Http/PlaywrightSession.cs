@@ -114,17 +114,33 @@ internal sealed class PlaywrightSession(IBrowserContext context, float timeoutMs
 
     private async Task<IPage> PageAsync() => _page ??= await PlaywrightPageFetcher.NewPageAsync(context);
 
+    // Con una lista "a, b, c" Playwright toma la primera coincidencia del documento, no la primera
+    // alternativa. Aquí se prueba cada alternativa en orden: p. ej. el select del modal antes que
+    // uno igual del encabezado que está dentro de un panel cerrado y no se puede usar.
+
     public async Task<IReadOnlyList<SelectOption>> ReadOptionsAsync(string selectSelector, CancellationToken ct)
     {
-        var select = (await PageAsync()).Locator(selectSelector).First;
-        try
+        var page = await PageAsync();
+        ILocator? fallback = null;
+        foreach (var alternative in SelectorList.Split(selectSelector))
         {
-            await select.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Attached, Timeout = 10_000 });
+            var select = page.Locator(alternative).First;
+            try
+            {
+                await select.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Attached, Timeout = fallback is null ? 10_000 : 2_000 });
+            }
+            catch (TimeoutException)
+            {
+                continue;
+            }
+            if (await select.IsVisibleAsync()) return await OptionsOf(select);
+            fallback ??= select;
         }
-        catch (TimeoutException)
-        {
-            return [];
-        }
+        return fallback is null ? [] : await OptionsOf(fallback);
+    }
+
+    private static async Task<IReadOnlyList<SelectOption>> OptionsOf(ILocator select)
+    {
         var options = new List<SelectOption>();
         foreach (var option in await select.Locator("option").AllAsync())
         {
@@ -137,29 +153,57 @@ internal sealed class PlaywrightSession(IBrowserContext context, float timeoutMs
 
     public async Task<bool> ChooseOptionAsync(string selectSelector, string value, CancellationToken ct)
     {
-        try
+        var page = await PageAsync();
+        foreach (var alternative in SelectorList.Split(selectSelector))
         {
-            await (await PageAsync()).Locator(selectSelector).First.SelectOptionAsync(value, new LocatorSelectOptionOptions { Timeout = 10_000 });
-            return true;
+            try
+            {
+                await page.Locator(alternative).First.SelectOptionAsync(value, new LocatorSelectOptionOptions { Timeout = 5_000 });
+                return true;
+            }
+            catch (Exception ex) when (ex is TimeoutException or PlaywrightException)
+            {
+                // No está, está oculto o no tiene esa opción: se prueba la siguiente alternativa.
+            }
         }
-        catch (Exception ex) when (ex is TimeoutException or PlaywrightException)
-        {
-            return false;
-        }
+        return false;
     }
 
     public async Task<bool> ClickAsync(string selector, CancellationToken ct)
     {
-        var target = (await PageAsync()).Locator(selector).Filter(new LocatorFilterOptions { Visible = true }).First;
-        try
+        var page = await PageAsync();
+        foreach (var alternative in SelectorList.Split(selector))
         {
-            await target.ClickAsync(new LocatorClickOptions { Timeout = 5_000 });
-            return true;
+            try
+            {
+                await page.Locator(alternative).Filter(new LocatorFilterOptions { Visible = true }).First
+                    .ClickAsync(new LocatorClickOptions { Timeout = 3_000 });
+                return true;
+            }
+            catch (Exception ex) when (ex is TimeoutException or PlaywrightException)
+            {
+                // Se prueba la siguiente alternativa.
+            }
         }
-        catch (Exception ex) when (ex is TimeoutException or PlaywrightException)
-        {
-            return false;
-        }
+        return false;
+    }
+
+    public async Task<FormPostResult> PostFormAsync(string url, IReadOnlyDictionary<string, string> form, CancellationToken ct)
+    {
+        // fetch desde la página: mismas cookies, origen y encabezados que usa el propio sitio.
+        var result = await (await PageAsync()).EvaluateAsync<System.Text.Json.JsonElement>("""
+            async ([url, fields]) => {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new URLSearchParams(fields).toString(),
+                });
+                return { status: response.status, body: (await response.text()).slice(0, 2000) };
+            }
+            """, new object[] { url, form });
+        ct.ThrowIfCancellationRequested();
+        // Playwright devuelve el objeto de JavaScript como JSON; se lee a mano.
+        return new FormPostResult(result.GetProperty("status").GetInt32(), result.GetProperty("body").GetString() ?? "");
     }
 
     public async Task WaitForIdleAsync(CancellationToken ct)

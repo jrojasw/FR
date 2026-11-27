@@ -87,6 +87,16 @@ public sealed class BranchOptions
     /// </summary>
     public string? CookieName { get; set; }
 
+    /// <summary>
+    /// URL (relativa al sitio) a la que el propio sitio envía la sucursal elegida, p. ej.
+    /// "/catalogswitcher/switch/customergroup". Si se define, la sucursal se fija con ese POST en
+    /// vez de usar el modal. Vacío ("") obliga a usar el modal; nulo = lo que defina la tienda.
+    /// </summary>
+    public string? SwitchUrl { get; set; }
+
+    /// <summary>Campo del formulario de <see cref="SwitchUrl"/> que lleva el id de la sucursal.</summary>
+    public string? SwitchField { get; set; }
+
     /// <summary>Sobrescribe los selectores del modal: OpenModal, Region, Store, Confirm.</summary>
     public Dictionary<string, string> Selectors { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }

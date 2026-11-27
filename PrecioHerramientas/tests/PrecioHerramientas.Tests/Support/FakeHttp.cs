@@ -108,6 +108,15 @@ public sealed class FakeBrowserSession(
     public Task<IReadOnlyDictionary<string, string>> GetCookiesAsync(CancellationToken ct) =>
         Task.FromResult<IReadOnlyDictionary<string, string>>(new Dictionary<string, string>(Cookies));
 
+    /// <summary>Respuesta a los POST de formulario (por defecto 200 con éxito).</summary>
+    public Func<string, IReadOnlyDictionary<string, string>, PrecioHerramientas.Scrapers.Http.FormPostResult>? PostResponse { get; set; }
+
+    public Task<PrecioHerramientas.Scrapers.Http.FormPostResult> PostFormAsync(string url, IReadOnlyDictionary<string, string> form, CancellationToken ct)
+    {
+        Actions.Add($"post:{url}?{string.Join("&", form.Select(f => $"{f.Key}={f.Value}"))}");
+        return Task.FromResult(PostResponse?.Invoke(url, form) ?? new PrecioHerramientas.Scrapers.Http.FormPostResult(200, """{"success":true}"""));
+    }
+
     public Task SetCookieAsync(string name, string value, string url, CancellationToken ct)
     {
         Cookies[name] = value;

@@ -44,6 +44,45 @@ public interface IBrowserSession : IAsyncDisposable
     Task<IReadOnlyDictionary<string, string>> GetCookiesAsync(CancellationToken ct);
 
     Task SetCookieAsync(string name, string value, string url, CancellationToken ct);
+
+    /// <summary>
+    /// Envía un formulario (POST) desde la página abierta, como lo haría su propio JavaScript
+    /// (mismas cookies y origen). Para acciones del sitio, p. ej. fijar la sucursal.
+    /// </summary>
+    Task<FormPostResult> PostFormAsync(string url, IReadOnlyDictionary<string, string> form, CancellationToken ct);
+}
+
+public sealed record FormPostResult(int Status, string Body);
+
+/// <summary>
+/// Divide una lista de selectores "a, b, c" en sus alternativas, sin cortar dentro de comillas
+/// ni paréntesis (p. ej. <c>button:has-text('Hola, chao')</c>).
+/// </summary>
+public static class SelectorList
+{
+    public static IReadOnlyList<string> Split(string selectors)
+    {
+        var parts = new List<string>();
+        int depth = 0, start = 0;
+        char quote = '\0';
+        for (int i = 0; i < selectors.Length; i++)
+        {
+            var c = selectors[i];
+            if (quote != '\0') { if (c == quote) quote = '\0'; continue; }
+            switch (c)
+            {
+                case '\'' or '"': quote = c; break;
+                case '(' or '[': depth++; break;
+                case ')' or ']': depth--; break;
+                case ',' when depth == 0:
+                    parts.Add(selectors[start..i].Trim());
+                    start = i + 1;
+                    break;
+            }
+        }
+        parts.Add(selectors[start..].Trim());
+        return parts.Where(p => p.Length > 0).ToList();
+    }
 }
 
 /// <summary>Opción de un &lt;select&gt;.</summary>
