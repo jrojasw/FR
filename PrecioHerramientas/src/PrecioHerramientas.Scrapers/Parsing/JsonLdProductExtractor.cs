@@ -31,6 +31,25 @@ public static class JsonLdProductExtractor
         return results;
     }
 
+    /// <summary>
+    /// Igual que <see cref="Extract(IDocument, Uri)"/>, pero desde el texto de un bloque JSON-LD ya
+    /// aislado (p. ej. uno que el sitio entrega dentro de los datos de React y no como &lt;script&gt;).
+    /// </summary>
+    public static IReadOnlyList<ScrapedProduct> ExtractFromJson(string json, Uri baseUri)
+    {
+        var results = new List<ScrapedProduct>();
+        try
+        {
+            using var document = JsonDocument.Parse(json, new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
+            Visit(document.RootElement, baseUri, results);
+        }
+        catch (JsonException)
+        {
+            // JSON-LD inválido: sin productos.
+        }
+        return results;
+    }
+
     private static void Visit(JsonElement element, Uri baseUri, List<ScrapedProduct> results)
     {
         switch (element.ValueKind)
